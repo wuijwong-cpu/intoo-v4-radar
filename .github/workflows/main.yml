@@ -3,8 +3,7 @@ name: INTOO V4 Daily Radar Auto-Scan
 on:
   # 1. 定时触发器 (Cron)
   schedule:
-    # 这里的参数是 UTC 时间。UTC 21:30 = 北京时间早上 05:30
-    # 每天早上 5:30 自动跑一次
+    # UTC 00:30 = 北京/香港时间早上 08:30
     - cron: '30 0 * * *'
   
   # 2. 手动点火器 (允许你在网页上随时点一个按钮强制运行)
@@ -12,7 +11,11 @@ on:
 
 jobs:
   run-radar:
-    runs-on: ubuntu-latest # 分配一台最新的 Linux 服务器
+    runs-on: ubuntu-latest
+    
+    # 强杀指令：强制使用 Node 24 消除黄色警告
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
       # 步骤 1：把你的代码拉取到这台服务器上
