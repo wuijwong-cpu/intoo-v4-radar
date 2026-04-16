@@ -179,8 +179,8 @@ def push_to_wechat(results):
         title = "🎯 V4 扫描: 今日无可投标的"
         content = "今日无符合条件的标的。请继续保持 0R 纪律，耐心等待。"
     else:
-        title = f"🎯 V4 Module T 推荐标的 {len(results)} 只"
-        content = "### 本日符合T模块买点标的：\n\n"
+        title = f"🎯 V4 Module T 策略触发标的 {len(results)} 只"
+        content = "### 本日策略触发标的：\n\n"
         for item in results:
             content += f"- **[{item['代码']}]** (现价: {item['现价']})\n"
             content += f"  - 信号: {item['信号']}\n"
