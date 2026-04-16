@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import warnings
 import requests
-from datetime import datetime
+from datetime import datetime, timezone
 import os
 
 warnings.filterwarnings('ignore')
@@ -153,7 +153,7 @@ def push_to_website(results):
     
     payload = {
         "market": "US",
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "radar_data": results
     }
     
