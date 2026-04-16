@@ -15,7 +15,7 @@ PUSHPLUS_TOKEN = "f64634b2942b4599aef243616997bd72"  # ⚠️ 填入你个人的
 PUSHPLUS_TOPIC = "INTOO_V4"                        # 群组编码
 
 # =====================================================================
-# INTOO V4-Quantamental: 104只美股战略观察池 (按物种分类)
+# INTOO V4-Quantamental: 104只美股战略观察池 
 # =====================================================================
 V4US_UNIVERSE = {
     'Type_A': ['XOM','CVX','COST','JNJ','PG','KO','PEP','WMT','MCD','ABBV','MRK','HD','UNH','V','MA','JPM','BAC','BRK-B','MS','NEE','SO','DUK','LMT','RTX','GD','PM','MO','VZ','T','PFE','AMGN','GILD','UPS','EMR','WM','APD'],
@@ -176,11 +176,11 @@ def push_to_wechat(results):
         return
 
     if not results:
-        title = "🎯 V4 扫描: 今日无猎物"
-        content = "今日无符合扣板条件的标的。请继续保持 0R 纪律，耐心等待。"
+        title = "🎯 V4 扫描: 今日无可投标的"
+        content = "今日无符合条件的标的。请继续保持 0R 纪律，耐心等待。"
     else:
-        title = f"🎯 V4 战术雷达发现 {len(results)} 只极品猎物"
-        content = "### 核心过滤引擎已锁定以下高能标的：\n\n"
+        title = f"🎯 V4 Module T 推荐标的 {len(results)} 只"
+        content = "### 本日符合T模块买点标的：\n\n"
         for item in results:
             content += f"- **[{item['代码']}]** (现价: {item['现价']})\n"
             content += f"  - 信号: {item['信号']}\n"
