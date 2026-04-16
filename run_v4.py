@@ -158,7 +158,7 @@ def push_to_website(results):
     }
     
     try:
-        # response = requests.post(API_URL, json=payload, headers=headers)
+          response = requests.post(API_URL, json=payload, headers=headers)
         # 暂时注释掉实际发送请求的代码，以免在接口未建好前报错。接口建好后取消注释即可。
         print(f"✅ 【云端同步】API 数据已打包，等待 Cloudflare 接口对接...")
     except Exception as e:
