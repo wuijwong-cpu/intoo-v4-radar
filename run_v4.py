@@ -142,7 +142,6 @@ def export_to_excel(results):
 
 def push_to_website(results):
     """【API 模块】将结果自动发送到 Cloudflare 网站后台"""
-    # TODO: 填入你后续在 Cloudflare 部署的真实接口地址
     API_URL = "https://ito-core-proxy.wuijwong.workers.dev/api/update_radar"
     SECRET_TOKEN = "INTOO_V4_SECURE_TOKEN_2026" 
     
@@ -158,9 +157,8 @@ def push_to_website(results):
     }
     
     try:
-          response = requests.post(API_URL, json=payload, headers=headers)
-        # 暂时注释掉实际发送请求的代码，以免在接口未建好前报错。接口建好后取消注释即可。
-        print(f"✅ 【云端同步】API 数据已打包，等待 Cloudflare 接口对接...")
+        response = requests.post(API_URL, json=payload, headers=headers)
+        print(f"✅ 【云端同步】API 发射成功！Cloudflare 返回状态码: {response.status_code}")
     except Exception as e:
         print(f"❌ 【云端同步失败】网络或接口异常: {e}")
 
