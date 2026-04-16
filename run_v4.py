@@ -249,7 +249,7 @@ def check_v4_resonance_strict(df_daily):
             break
             
     signal_strength = "S级 (完美共振)" if squeeze_ratio < 0.12 else "A级 (常态推升)"
-    streak_tag = f" [🔥连击 {consecutive_days} 天]" if consecutive_days > 1 else " [✨首日突破]"
+    streak_tag = f" [🔥连续触发 {consecutive_days} 天]" if consecutive_days > 1 else " [✨首日触发]"
     final_reason = signal_strength + streak_tag
 
     dashboard_data = {
@@ -369,7 +369,7 @@ def run_v4_daily_scanner():
         push_to_website(results)
         push_to_wechat(results)
     else:
-        print("📭 系统休眠：今日无可投猎物。")
+        print("📭 系统休眠：今日无可投标的。")
         push_to_wechat([])
 
 if __name__ == "__main__":
