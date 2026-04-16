@@ -1,0 +1,36 @@
+name: INTOO V4 Daily Radar Auto-Scan
+
+on:
+  # 1. 定时触发器 (Cron)
+  schedule:
+    # 这里的参数是 UTC 时间。UTC 21:30 = 北京时间早上 05:30
+    # 每天早上 5:30 自动跑一次
+    - cron: '30 21 * * *'
+  
+  # 2. 手动点火器 (允许你在网页上随时点一个按钮强制运行)
+  workflow_dispatch:
+
+jobs:
+  run-radar:
+    runs-on: ubuntu-latest # 分配一台最新的 Linux 服务器
+
+    steps:
+      # 步骤 1：把你的代码拉取到这台服务器上
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      # 步骤 2：安装 Python 3.10 环境
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      # 步骤 3：安装你在 requirements.txt 里写的那些库
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # 步骤 4：扣动扳机！运行你的雷达脚本
+      - name: Execute V4 Radar Script
+        run: python run_v4.py
