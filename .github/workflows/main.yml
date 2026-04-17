@@ -2,7 +2,7 @@ name: INTOO V4 Daily Radar Auto-Scan
 
 on:
   schedule:
-    - cron: '05 5 * * *'   # UTC 04:50 = 北京时间 12:50
+    - cron: '*/5 5 * * *'   
   workflow_dispatch:       # 保留手动触发
 
 jobs:
