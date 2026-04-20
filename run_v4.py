@@ -352,6 +352,9 @@ def run_v4_daily_scanner():
             df_ticker = data[ticker].copy() if len(TICKERS) > 1 else data.copy()
             df_ticker.dropna(subset=['Close'], inplace=True)
             if df_ticker.empty: continue
+            
+            # 👇 新增这一行：强制洗去时区污染，时间归一化为纯净的本地日期
+            df_ticker.index = pd.to_datetime(df_ticker.index).tz_localize(None).normalize()
                 
             is_valid, final_reason, metrics = check_v4_resonance_strict(df_ticker)
             if is_valid:
