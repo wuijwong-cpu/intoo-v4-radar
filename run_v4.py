@@ -342,45 +342,54 @@ def push_to_wechat(results):
         print(f"❌ 【微信群发失败】: {e}")
 
 def run_v4_daily_scanner():
-    print(f"INTOO V4 T模块：全球四大市场 (US/HK/JP/CN) 410只全景扫描中...\n")
-    # 批量下载以提速
-    data = yf.download(TICKERS, period='10y', group_by='ticker', progress=False)
+    print(f"INTOO V4 T模块：全球四大市场 410只全景扫描中...\n")
     
     results = []
-    for ticker in TICKERS:
+    
+    # 【核心优化】：按市场（US/HK/JP/CN）物理隔离下载，彻底杜绝跨国时区对齐污染
+    for market_name, universe in GLOBAL_POOLS.items():
+        # 提取当前单一市场的所有标的
+        market_tickers = [ticker for sublist in universe.values() for ticker in sublist]
+        print(f"📥 正在构建 [{market_name}] 市场独立坐标系，下载 {len(market_tickers)} 只标的...")
+        
         try:
-            df_ticker = data[ticker].copy() if len(TICKERS) > 1 else data.copy()
-            df_ticker.dropna(subset=['Close'], inplace=True)
-            if df_ticker.empty: continue
+            # 独立下载该市场数据
+            data = yf.download(market_tickers, period='10y', group_by='ticker', progress=False)
             
-            # 👇 新增这一行：强制洗去时区污染，时间归一化为纯净的本地日期
-            df_ticker.index = pd.to_datetime(df_ticker.index).tz_localize(None).normalize()
-                
-            is_valid, final_reason, metrics = check_v4_resonance_strict(df_ticker)
-            if is_valid:
-                # 获取中文名
-                stock_name = NAME_MAP.get(ticker, "")
-                display_code = f"{ticker} {stock_name}".strip()
+            for ticker in market_tickers:
+                try:
+                    df_ticker = data[ticker].copy() if len(market_tickers) > 1 else data.copy()
+                    df_ticker.dropna(subset=['Close'], inplace=True)
+                    if df_ticker.empty: continue
+                    
+                    # 强力洗去可能残留的时区信息，归一化为纯净的本地日期日历
+                    df_ticker.index = pd.to_datetime(df_ticker.index).tz_localize(None).normalize()
+                        
+                    is_valid, final_reason, metrics = check_v4_resonance_strict(df_ticker)
+                    if is_valid:
+                        stock_name = NAME_MAP.get(ticker, "")
+                        display_code = f"{ticker} {stock_name}".strip()
 
-                results.append({
-                    '市场': MARKET_MAP[ticker],
-                    '代码': display_code,
-                    '信号': final_reason,
-                    '现价': metrics['Close'],
-                    'ATR': metrics['ATR'],
-                    '挤压率': metrics['Squeeze'],
-                    '乖离率': metrics['Deviation'],
-                    '1R防线': metrics['Dynamic_Stop']
-                })
-        except Exception:
+                        results.append({
+                            '市场': market_name,
+                            '代码': display_code,
+                            '信号': final_reason,
+                            '现价': metrics['Close'],
+                            'ATR': metrics['ATR'],
+                            '挤压率': metrics['Squeeze'],
+                            '乖离率': metrics['Deviation'],
+                            '1R防线': metrics['Dynamic_Stop']
+                        })
+                except Exception:
+                    continue
+        except Exception as e:
+            print(f"❌ {market_name} 市场数据下载失败: {e}")
             continue
 
     if results:
-        # 排序：按市场 A-Z，然后按代码
         results.sort(key=lambda x: (x['市场'], x['代码']))
-        
         df_res = pd.DataFrame(results)
-        print("=================== V4 全球战术扣板白名单 ===================")
+        print("\n=================== V4 全球战术扣板白名单 ===================")
         print(df_res[['市场', '代码', '信号', '现价', '1R防线']].to_string(index=False))
         print("=============================================================\n")
         
@@ -388,7 +397,7 @@ def run_v4_daily_scanner():
         push_to_website(results)
         push_to_wechat(results)
     else:
-        print("📭 系统休眠：今日无可投标的。")
+        print("📭 系统休眠：今日无任何标的满足极品共振。")
         push_to_wechat([])
 
 if __name__ == "__main__":
