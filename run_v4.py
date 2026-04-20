@@ -183,7 +183,7 @@ def calc_v4_indicators(df):
 
 def check_v4_resonance_strict(df_daily):
     """执行 V4 动态多周期物理共振审核"""
-    if len(df_daily) < 30:
+    if len(df_daily) < 60:
         return False, "数据极端匮乏，无法建立坐标系", None
 
     df_weekly = df_daily.resample('W-FRI').agg({'Open':'first','High':'max','Low':'min','Close':'last'}).dropna()
@@ -199,7 +199,9 @@ def check_v4_resonance_strict(df_daily):
     curr_d = df_d.iloc[-1]
     prev_d = df_d.iloc[-2]
     curr_w = df_w.iloc[-1]
+    prev_w = df_w.iloc[-2] if len(df_w) > 1 else None
     curr_m = df_m.iloc[-1] if len(df_m) > 0 else None
+    prev_m = df_m.iloc[-2] if len(df_m) > 1 else None
 
     # 1：MACD 宏观重力压制
     if curr_m is not None and not pd.isna(curr_m['MACD_DIF']):
@@ -210,17 +212,27 @@ def check_v4_resonance_strict(df_daily):
         if curr_w['MACD_DIF'] < curr_w['MACD_DEA']:
             return False, "周线死叉压制", None
 
-    # 2：GMMA 筹码结构
-    d_short_mas = [curr_d[f'SMA_{p}'] for p in SHORT_GMMA]
-    d_long_mas = [curr_d[f'SMA_{p}'] for p in LONG_GMMA]
-    if min(d_short_mas) <= max(d_long_mas):
-        return False, "均线结构纠缠", None
+    # === [优先级 1] 月线战略锁 ===
+    if prev_m is not None:
+        if curr_m['BOLL_MID'] <= prev_m['BOLL_MID']:
+            return False, "月线中轨向下压制", None
+        m_short_mas = [curr_m[f'SMA_{p}'] for p in SHORT_GMMA]
+        m_long_mas = [curr_m[f'SMA_{p}'] for p in LONG_GMMA]
+        if pd.isna(m_long_mas).any() or min(m_short_mas) <= max(m_long_mas):
+            return False, "月线均线结构纠缠", None
 
-    # 3：BOLL 生命线与趋势锁 (Trend Lock)
-    if curr_d['Close'] <= curr_d['BOLL_MID']:
-        return False, "跌破日线中轨", None
+    # === [优先级 2] 周线波段锁 ===
+    if prev_w is not None:
+        if curr_w['BOLL_MID'] <= prev_w['BOLL_MID']:
+            return False, "周线中轨向下压制", None
+        w_short_mas = [curr_w[f'SMA_{p}'] for p in SHORT_GMMA]
+        w_long_mas = [curr_w[f'SMA_{p}'] for p in LONG_GMMA]
+        if min(w_short_mas) <= max(w_long_mas):
+            return False, "周线均线结构纠缠", None
+
+    # === [优先级 3] 日线战术位 (放宽) ===
     if curr_d['BOLL_MID'] <= prev_d['BOLL_MID']:
-        return False, "中轨向下或走平 (假突破过滤)", None
+        return False, "日线中轨向下或走平", None
 
     # 4：乖离率防追高
     if not pd.isna(curr_d['ATR']):
@@ -233,17 +245,21 @@ def check_v4_resonance_strict(df_daily):
     if squeeze_ratio > 0.30: 
         return False, "波动率过度发散", None
     
-    # === 6：计算连续共振天数 (核心统计逻辑) ===
+    # === 6：计算连续触发筛选（上榜）天数 (战术窗口期) ===
     consecutive_days = 0
-    # 向前追溯最多10天
     for i in range(1, 11):
         if len(df_d) <= i: break
         lookback_curr = df_d.iloc[-i]
         lookback_prev = df_d.iloc[-(i+1)] if len(df_d) > (i+1) else None
         
-        # 只要满足基本趋势条件就算作信号存续
-        if lookback_curr['Close'] > lookback_curr['BOLL_MID'] and \
-           (lookback_prev is None or lookback_curr['BOLL_MID'] >= lookback_prev['BOLL_MID']):
+        if lookback_prev is None: break
+        
+        cond_trend = lookback_curr['BOLL_MID'] > lookback_prev['BOLL_MID']
+        cond_squeeze = lookback_curr['BOLL_WIDTH'] <= 0.30
+        hist_dev = (lookback_curr['Close'] - lookback_curr['BOLL_MID']) / lookback_curr['ATR'] if not pd.isna(lookback_curr['ATR']) else 99
+        cond_dev = hist_dev <= 1.5
+        
+        if cond_trend and cond_squeeze and cond_dev:
             consecutive_days += 1
         else:
             break
@@ -328,7 +344,7 @@ def push_to_wechat(results):
 def run_v4_daily_scanner():
     print(f"INTOO V4 T模块：全球四大市场 (US/HK/JP/CN) 410只全景扫描中...\n")
     # 批量下载以提速
-    data = yf.download(TICKERS, period='3y', group_by='ticker', progress=False)
+    data = yf.download(TICKERS, period='10y', group_by='ticker', progress=False)
     
     results = []
     for ticker in TICKERS:
