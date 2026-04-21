@@ -28,7 +28,7 @@ V4_JP_UNIVERSE = {
     'Type_A': ['8058.T', '8031.T', '8001.T', '8002.T', '8053.T', '8306.T', '8316.T', '8411.T', '8766.T', '8725.T', '8591.T', '9432.T', '9433.T', '9434.T', '7203.T', '7267.T', '4502.T', '4519.T', '2914.T', '4452.T', '3382.T', '9020.T', '9022.T', '9531.T', '9532.T', '1925.T', '1928.T', '4503.T', '4507.T', '9735.T'],
     'Type_B': ['8035.T', '6857.T', '6920.T', '6146.T', '7741.T', '4063.T', '6963.T', '6723.T', '7735.T', '6861.T', '6981.T', '6594.T', '6501.T', '9983.T', '7974.T', '6098.T', '4307.T', '4661.T', '2413.T', '4568.T', '4523.T', '6367.T', '7733.T', '6902.T', '6503.T', '6504.T', '7269.T', '6954.T', '8113.T', '4911.T', '4704.T', '3092.T', '6890.T', '6961.T', '7751.T', '6701.T', '6702.T'],
     'Type_C': ['5401.T', '5411.T', '6301.T', '6326.T', '4005.T', '9101.T', '9104.T', '9107.T', '7011.T', '7012.T', '7013.T', '8801.T', '8802.T', '3402.T', '3407.T', '5713.T', '5020.T', '5019.T', '5201.T', '5802.T', '1801.T', '6273.T'],
-    'Type_D': ['4385.T', '4478.T', '3994.T', '5032.T', '5253.T', '4443.T', '3911.T', '6619.T', '4488.T', '7647.T', '6506.T', '9984.T', '6758.T']
+    'Type_D': ['4385.T', '4478.T', '3994.T', '5032.T', '5253.T', '4443.T', '3911.T', '6619.T', '4488.T', '6506.T', '9984.T', '6758.T']
 }
 
 V4_HK_UNIVERSE = {
@@ -151,35 +151,37 @@ SHORT_GMMA = [3, 5, 8, 10, 12, 15]
 LONG_GMMA = [30, 35, 40, 45, 50, 60]
 
 def calc_v4_indicators(df):
-    """计算 V4 体系要求的所有物理指标 (MACD, GMMA, BOLL, ATR)"""
-    if df.empty or len(df) < 26: 
+    """V4 系统底层指标计算引擎"""
+    if df.empty or len(df) < 30:
         return None
+    
+    # 1. 计算 GMMA 均线组
+    for p in SHORT_GMMA + LONG_GMMA:
+        df[f'SMA_{p}'] = df['Close'].rolling(window=p).mean()
         
+    # 2. 计算 BOLL 布尔带 (20, 2)
     df['BOLL_MID'] = df['Close'].rolling(window=20).mean()
     df['BOLL_STD'] = df['Close'].rolling(window=20).std()
-    df['BOLL_UP'] = df['BOLL_MID'] + 2 * df['BOLL_STD']
-    df['BOLL_LW'] = df['BOLL_MID'] - 2 * df['BOLL_STD']
-    df['BOLL_WIDTH'] = (df['BOLL_UP'] - df['BOLL_LW']) / df['BOLL_MID'] 
+    df['BOLL_UPPER'] = df['BOLL_MID'] + 2 * df['BOLL_STD']
+    df['BOLL_LOWER'] = df['BOLL_MID'] - 2 * df['BOLL_STD']
+    df['BOLL_WIDTH'] = (df['BOLL_UPPER'] - df['BOLL_LOWER']) / df['BOLL_MID']
     
-    for period in SHORT_GMMA:
-        df[f'SMA_{period}'] = df['Close'].rolling(window=period).mean()
-    for period in LONG_GMMA:
-        df[f'SMA_{period}'] = df['Close'].rolling(window=period).mean()
-        
-    df['EMA12'] = df['Close'].ewm(span=12, adjust=False).mean()
-    df['EMA26'] = df['Close'].ewm(span=26, adjust=False).mean()
-    df['MACD_DIF'] = df['EMA12'] - df['EMA26']
+    # 3. 计算 MACD (12, 26, 9)
+    exp1 = df['Close'].ewm(span=12, adjust=False).mean()
+    exp2 = df['Close'].ewm(span=26, adjust=False).mean()
+    df['MACD_DIF'] = exp1 - exp2
     df['MACD_DEA'] = df['MACD_DIF'].ewm(span=9, adjust=False).mean()
     
-    if 'High' in df.columns and 'Low' in df.columns:
-        df['TR'] = np.maximum(df['High'] - df['Low'], 
-                   np.maximum(abs(df['High'] - df['Close'].shift(1)), 
-                              abs(df['Low'] - df['Close'].shift(1))))
-        df['ATR'] = df['TR'].rolling(window=14).mean()
-    else:
-        df['ATR'] = np.nan
-        
+    # 4. 计算 ATR (14)
+    high_low = df['High'] - df['Low']
+    high_close = (df['High'] - df['Close'].shift()).abs()
+    low_close = (df['Low'] - df['Close'].shift()).abs()
+    tr = df[['High', 'Low', 'Close']].copy()
+    tr['TR'] = pd.concat([high_low, high_close, low_close], axis=1).max(axis=1)
+    df['ATR'] = tr['TR'].rolling(window=14).mean()
+    
     return df
+
 
 def check_v4_resonance_strict(df_daily):
     """执行 V4 动态多周期物理共振审核"""
@@ -198,56 +200,127 @@ def check_v4_resonance_strict(df_daily):
 
     curr_d = df_d.iloc[-1]
     prev_d = df_d.iloc[-2]
-    curr_w = df_w.iloc[-1]
+    
+    curr_w = df_w.iloc[-1] if len(df_w) > 0 else None
+    prev_w = df_w.iloc[-2] if len(df_w) >= 2 else None
+    
     curr_m = df_m.iloc[-1] if len(df_m) > 0 else None
-
-    # 1：MACD 宏观重力压制
-    if curr_m is not None and not pd.isna(curr_m['MACD_DIF']):
-        if curr_m['MACD_DIF'] < curr_m['MACD_DEA'] and curr_m['MACD_DIF'] < 0:
-            return False, "月线水下死叉", None
+    prev_m = df_m.iloc[-2] if len(df_m) >= 2 else None
+    # ==========================================
+    # 自修：V4 T模块检查
+    # ==========================================
+    # 自修：第一步：月线级别审核 (MACD、BOLL、GMMA，三者满足其二则通过)
+    if curr_m is not None:
+        m_pass_count = 0
+    # 1：MACD 条件 (宏观重力压制)
+        m_macd_pass = True
+        if not pd.isna(curr_m['MACD_DIF']):
+            if curr_m['MACD_DIF'] < curr_m['MACD_DEA'] and curr_m['MACD_DIF'] < 0:
+                m_macd_pass = False
+        if m_macd_pass: m_pass_count += 1
+    # 2. BOLL 条件 (底座与中轨趋势)
+        m_boll_pass = True
+        if not pd.isna(curr_m['BOLL_MID']) and curr_m['Close'] < curr_m['BOLL_MID']:
+            m_boll_pass = False
+        if prev_m is not None and not pd.isna(curr_m['BOLL_MID']) and not pd.isna(prev_m['BOLL_MID']):
+            if curr_m['BOLL_MID'] <= prev_m['BOLL_MID']:
+                m_boll_pass = False
+        if m_boll_pass: m_pass_count += 1
+    # 3. GMMA 条件 (长期组斜率)
+        m_gmma_pass = True
+        if prev_m is not None and not pd.isna(curr_m['SMA_60']):
+            if curr_m['SMA_60'] < prev_m['SMA_60']:
+                m_gmma_pass = False
+        if m_gmma_pass: m_pass_count += 1
             
-    if not pd.isna(curr_w['MACD_DIF']):
-        if curr_w['MACD_DIF'] < curr_w['MACD_DEA']:
-            return False, "周线死叉压制", None
+        # 综合判定
+        if m_pass_count < 2:
+            return False, f"月线级别审核未通过 (仅符合 {m_pass_count}/3 项)", None
 
-    # 2：GMMA 筹码结构
-    d_short_mas = [curr_d[f'SMA_{p}'] for p in SHORT_GMMA]
-    d_long_mas = [curr_d[f'SMA_{p}'] for p in LONG_GMMA]
-    if min(d_short_mas) <= max(d_long_mas):
-        return False, "均线结构纠缠", None
+   # 自修：第二步：周线级别审核 (仅 BOLL、GMMA 具备否决权)
+    if curr_w is not None:
+        # 补充 1.3：周线 GMMA 结构测试 (短期组必须在长期组内部或上方)
+        w_short_min = min([curr_w[f'SMA_{p}'] for p in SHORT_GMMA])
+        w_long_min = min([curr_w[f'SMA_{p}'] for p in LONG_GMMA])
+        if w_short_min < w_long_min:
+            return False, "周线GMMA短期组跌穿长期组底线", None
 
-    # 3：BOLL 生命线与趋势锁 (Trend Lock)
+        # 【新增】1.3.1 周线 BOLL 中轨必须保持向上（Trend Lock）
+        if len(df_w) >= 2:
+            prev_w = df_w.iloc[-2]
+            if not pd.isna(curr_w['BOLL_MID']) and not pd.isna(prev_w['BOLL_MID']) and \
+               curr_w['BOLL_MID'] <= prev_w['BOLL_MID']:
+                return False, "周线BOLL中轨向下或走平 (中期趋势衰竭)", None
+    
+   # 自修：第三步：日线级别审核 (BOLL、GMMA 及原有风控项)
+
+    # 1. 日线 GMMA 筹码结构
+    if curr_d['SMA_60'] <= prev_d['SMA_60']:
+        return False, "日线长期GMMA组向下 (不向上)", None
+
+    d_short_min = min([curr_d[f'SMA_{p}'] for p in SHORT_GMMA])
+    d_long_min = min([curr_d[f'SMA_{p}'] for p in LONG_GMMA])   # 长期组最后一根线 = SMA_60
+    if d_short_min < d_long_min:
+        return False, "短期均线跌穿长期组最后一根线", None
+
+    # 2：BOLL 生命线与趋势锁 (Trend Lock)
     if curr_d['Close'] <= curr_d['BOLL_MID']:
         return False, "跌破日线中轨", None
     if curr_d['BOLL_MID'] <= prev_d['BOLL_MID']:
         return False, "中轨向下或走平 (假突破过滤)", None
-
-    # 4：乖离率防追高
+    
+    # 3. 原有防追高防御保留
     if not pd.isna(curr_d['ATR']):
         deviation_ratio = (curr_d['Close'] - curr_d['BOLL_MID']) / curr_d['ATR']
         if deviation_ratio > 1.5:
             return False, f"乖离率过大 ({deviation_ratio:.2f} ATR)", None
 
-    # 5：挤压锁 (Squeeze Lock)
-    squeeze_ratio = curr_d['BOLL_WIDTH']
-    if squeeze_ratio > 0.30: 
-        return False, "波动率过度发散", None
-    
-    # === 6：计算连续共振天数 (核心统计逻辑) ===
+    # 4. 原有挤压防御保留
+    if 'BOLL_WIDTH' in curr_d:
+        squeeze_ratio = curr_d['BOLL_WIDTH']
+        if squeeze_ratio > 0.30: 
+            return False, "波动率过度发散", None
+
+
+   # 自修 第四步：计算连续共振天数（已改为真正统计「整个函数连续触发天数」）
     consecutive_days = 0
-    # 向前追溯最多10天
-    for i in range(1, 11):
+    # 向前追溯最多30天
+    for i in range(1, 31):
         if len(df_d) <= i: break
         lookback_curr = df_d.iloc[-i]
         lookback_prev = df_d.iloc[-(i+1)] if len(df_d) > (i+1) else None
         
-        # 只要满足基本趋势条件就算作信号存续
-        if lookback_curr['Close'] > lookback_curr['BOLL_MID'] and \
-           (lookback_prev is None or lookback_curr['BOLL_MID'] >= lookback_prev['BOLL_MID']):
-            consecutive_days += 1
-        else:
+        # === 对每一过去一天，完整检查日线级别所有严格条件 ===
+        # ① 长期GMMA必须向上
+        if lookback_prev is not None and lookback_curr['SMA_60'] <= lookback_prev['SMA_60']:
             break
-            
+        
+        # ② 短期GMMA允许进入长期组，但不能跌穿最后一根线
+        lb_short_min = min([lookback_curr[f'SMA_{p}'] for p in SHORT_GMMA])
+        lb_long_min = min([lookback_curr[f'SMA_{p}'] for p in LONG_GMMA])
+        if lb_short_min < lb_long_min:
+            break
+        
+        # ③ BOLL 生命线 + Trend Lock
+        if lookback_curr['Close'] <= lookback_curr['BOLL_MID']:
+            break
+        if lookback_prev is not None and lookback_curr['BOLL_MID'] <= lookback_prev['BOLL_MID']:
+            break
+        
+        # ④ 乖离率防追高
+        if not pd.isna(lookback_curr['ATR']):
+            lb_dev = (lookback_curr['Close'] - lookback_curr['BOLL_MID']) / lookback_curr['ATR']
+            if lb_dev > 1.5:
+                break
+        
+        # ⑤ 挤压锁
+        lb_squeeze = lookback_curr['BOLL_WIDTH']
+        if lb_squeeze > 0.30:
+            break
+        
+        # 全部通过 → 计数 +1，继续往前看
+        consecutive_days += 1
+
     signal_strength = "S级 (完美共振)" if squeeze_ratio < 0.12 else "A级 (常态推升)"
     streak_tag = f" [🔥连续触发 {consecutive_days} 天]" if consecutive_days > 1 else " [✨首日触发]"
     final_reason = signal_strength + streak_tag
@@ -353,7 +426,8 @@ def run_v4_daily_scanner():
                     '乖离率': metrics['Deviation'],
                     '1R防线': metrics['Dynamic_Stop']
                 })
-        except Exception:
+        except Exception as e:
+            print(f"Error on {ticker}: {e}")
             continue
 
     if results:
