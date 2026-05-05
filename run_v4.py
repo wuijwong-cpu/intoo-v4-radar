@@ -12,11 +12,11 @@ warnings.filterwarnings('ignore')
 # =====================================================================
 # INTOO V4-Quantamental 通信与广播配置
 # =====================================================================
-PUSHPLUS_TOKEN = "f64634b2942b4599aef243616997bd72"  # ⚠️ 填入你个人的 PushPlus Token
+PUSHPLUS_TOKEN = os.environ.get("PUSHPLUS_TOKEN")
 PUSHPLUS_TOPIC = "INTOO_V4"                        # 群组编码
 
 API_URL_BASE = "https://ito-core-proxy.wuijwong.workers.dev/api"
-SECRET_TOKEN = "INTOO_V4_SECURE_TOKEN_2026"
+SECRET_TOKEN = os.environ.get("SECRET_TOKEN")
 
 # =====================================================================
 # INTOO V4-Quantamental: 全球四大核心战场 (US / HK / JP / CN)
