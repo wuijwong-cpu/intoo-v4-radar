@@ -3,7 +3,8 @@ import pandas as pd
 import numpy as np
 import warnings
 import requests
-from datetime import datetime, timezone
+import json
+from datetime import datetime, timezone, date
 import os
 
 warnings.filterwarnings('ignore')
@@ -13,6 +14,9 @@ warnings.filterwarnings('ignore')
 # =====================================================================
 PUSHPLUS_TOKEN = "f64634b2942b4599aef243616997bd72"  # ⚠️ 填入你个人的 PushPlus Token
 PUSHPLUS_TOPIC = "INTOO_V4"                        # 群组编码
+
+API_URL_BASE = "https://ito-core-proxy.wuijwong.workers.dev/api"
+SECRET_TOKEN = "INTOO_V4_SECURE_TOKEN_2026"
 
 # =====================================================================
 # INTOO V4-Quantamental: 全球四大核心战场 (US / HK / JP / CN)
@@ -160,7 +164,7 @@ SHORT_GMMA = [3, 5, 8, 10, 12, 15]
 LONG_GMMA = [30, 35, 40, 45, 50, 60]
 
 def calc_v4_indicators(df):
-    """V4 系统底层指标计算引擎"""
+    """V4 系统底层指标计算引擎[cite: 1, 2]"""
     if df.empty or len(df) < 30:
         return None
     
@@ -193,7 +197,7 @@ def calc_v4_indicators(df):
 
 
 def check_v4_resonance_strict(df_daily):
-    """执行 V4 动态多周期物理共振审核"""
+    """执行 V4 动态多周期物理共振审核[cite: 1, 2]"""
     if len(df_daily) < 30:
         return False, "数据极端匮乏，无法建立坐标系", None
 
@@ -335,11 +339,11 @@ def check_v4_resonance_strict(df_daily):
     final_reason = signal_strength + streak_tag
 
     dashboard_data = {
-        'Close': round(curr_d['Close'], 2),
-        'ATR': round(curr_d['ATR'], 2) if not pd.isna(curr_d['ATR']) else 0,
-        'Squeeze': f"{squeeze_ratio*100:.1f}%",
-        'Deviation': f"{deviation_ratio:.1f} ATR",
-        'Dynamic_Stop': round(curr_d['Close'] - 2.5 * curr_d['ATR'], 2) if not pd.isna(curr_d['ATR']) else 0,
+        'Close': round(float(curr_d['Close']), 2),
+        'ATR': round(float(curr_d['ATR']), 2) if not pd.isna(curr_d['ATR']) else 0,
+        'Squeeze': f"{float(squeeze_ratio)*100:.1f}%",
+        'Deviation': f"{float(deviation_ratio):.1f} ATR",
+        'Dynamic_Stop': round(float(curr_d['Close'] - 2.5 * curr_d['ATR']), 2) if not pd.isna(curr_d['ATR']) else 0,
         'Streak': consecutive_days
     }
     
@@ -362,23 +366,6 @@ def export_to_excel(results):
         print(f"✅ 【本地SOP】今日全球猎物 Excel 导出成功: {file_path}")
     except Exception as e:
         print(f"❌ 【本地导出失败】: {e}")
-
-def push_to_website(results):
-    """【API 模块】将结果自动发送到 Cloudflare 网站后台"""
-    API_URL = "https://ito-core-proxy.wuijwong.workers.dev/api/update_radar"
-    SECRET_TOKEN = "INTOO_V4_SECURE_TOKEN_2026" 
-    
-    payload = {
-        "market": "GLOBAL",
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-        "radar_data": results
-    }
-    headers = {"Content-Type": "application/json", "Authorization": f"Bearer {SECRET_TOKEN}"}
-    try:
-        response = requests.post(API_URL, json=payload, headers=headers)
-        print(f"✅ 【云端同步】API 发射成功！Cloudflare 返回状态码: {response.status_code}")
-    except Exception as e:
-        print(f"❌ 【云端同步失败】: {e}")
 
 def push_to_wechat(results):
     """【群发广播】使用 PushPlus 将战报推送到微信群组"""
@@ -407,9 +394,138 @@ def push_to_wechat(results):
     except Exception as e:
         print(f"❌ 【微信群发失败】: {e}")
 
+# =====================================================================
+# === [新增核心功能] 战役效能追踪引擎 (Campaign Tracker) ===
+# =====================================================================
+def fetch_tracker_from_cloud():
+    """从 KV 数据库下载现有的 TRACKER_ALL 账本"""
+    try:
+        r = requests.get(f"{API_URL_BASE}/radar?type=tracker")
+        if r.status_code == 200:
+            data = r.json()
+            if isinstance(data, dict):
+                return data.get("tracker_data", [])
+    except Exception as e:
+        print(f"⚠️ 拉取云端追踪账本失败: {e}")
+    return []
+
+def update_tracker_logic(daily_results, all_history_data):
+    """战役追踪逻辑：合并新标的，更新存量战役现价、收益与防线状态[cite: 1, 2]"""
+    tracker_db = fetch_tracker_from_cloud()
+    if not isinstance(tracker_db, list):
+        tracker_db = []
+        
+    today_str = datetime.now().strftime("%Y-%m-%d")
+
+    # 1. 新兵入库：将今日雷达新出的标的加入追踪[cite: 1]
+    for item in daily_results:
+        ticker = item['代码'].split(' ')[0]
+        campaign_id = f"{ticker}-{today_str}"
+        
+        # 防重复检查
+        if not any(c.get('campaign_id') == campaign_id for c in tracker_db):
+            p_in = float(item['现价'])
+            stop_1r = float(item['1R防线'])
+            tracker_db.append({
+                "campaign_id": campaign_id, 
+                "ticker": ticker, 
+                "start_date": today_str,
+                "signal": item['信号'], 
+                "p_in": p_in, 
+                "p_now": p_in, 
+                "hhv": p_in,
+                "stop_initial": stop_1r, 
+                "stop_dyn": stop_1r, 
+                "status": "RUNNING",
+                "abs_return": "+0.00%", 
+                "ann_return": "N/A", 
+                "r_multiple": "+0.0R"
+            })
+
+    # 2. 老兵点名：更新所有存量战役[cite: 1]
+    for campaign in tracker_db:
+        if campaign.get('status') == "STOPPED": 
+            continue # 已阵亡，数据锁定不更新[cite: 1]
+        
+        t = campaign['ticker']
+        try:
+            # 兼容单个或多个 Ticker 的 yfinance 结构
+            df = all_history_data[t].copy() if len(TICKERS) > 1 else all_history_data.copy()
+            df.dropna(subset=['Close'], inplace=True)
+            if df.empty: continue
+            
+            curr_p = float(df['Close'].iloc[-1])
+            p_in = float(campaign['p_in'])
+            
+            # 追踪最高价 HHV 更新[cite: 1]
+            if curr_p > campaign.get('hhv', 0): 
+                campaign['hhv'] = curr_p
+            
+            # 计算 14D ATR 动态防线[cite: 1]
+            tr = pd.concat([df['High']-df['Low'], (df['High']-df['Close'].shift()).abs(), (df['Low']-df['Close'].shift()).abs()], axis=1).max(axis=1)
+            atr = float(tr.rolling(14).mean().iloc[-1])
+            
+            new_stop = round(campaign['hhv'] - 2.5 * atr, 2)
+            # 棘轮效应：防线只上移[cite: 1]
+            if new_stop > campaign.get('stop_dyn', 0): 
+                campaign['stop_dyn'] = new_stop
+            
+            # 执行物理裁决状态更新[cite: 1]
+            if curr_p <= campaign['stop_dyn']:
+                campaign['status'] = "STOPPED"
+                campaign['p_now'] = campaign['stop_dyn']
+            else:
+                campaign['p_now'] = round(curr_p, 2)
+                # 2R 利润保护接管[cite: 1]
+                risk_1r = p_in - float(campaign['stop_initial'])
+                if risk_1r > 0 and (curr_p - p_in) >= 2 * risk_1r:
+                    campaign['status'] = "LOCKED"
+                    if campaign['stop_dyn'] < p_in: 
+                        campaign['stop_dyn'] = p_in # 上提盈亏线[cite: 1]
+            
+            # 计算收益率
+            start_d = datetime.strptime(campaign['start_date'], "%Y-%m-%d").date()
+            days = max((date.today() - start_d).days, 1)
+            
+            ret = ((campaign['p_now'] - p_in) / p_in) * 100
+            campaign['abs_return'] = f"{'+' if ret>0 else ''}{ret:.2f}%"
+            
+            if days >= 5:
+                ann = ((1 + ret/100)**(365/days) - 1) * 100
+                campaign['ann_return'] = f"{'+' if ann>0 else ''}{ann:.1f}%"
+            else:
+                campaign['ann_return'] = "N/A"
+            
+            if risk_1r > 0:
+                r_val = (campaign['p_now'] - p_in) / risk_1r
+                campaign['r_multiple'] = f"{'+' if r_val>0 else ''}{r_val:.1f}R"
+                
+        except Exception as e: 
+            print(f"Error updating {t}: {e}")
+            continue
+        
+    return tracker_db
+
+def push_v4_data_to_website(radar_res, tracker_res):
+    """【双轨推流】同时将雷达和追踪器数据同步到 Cloudflare"""
+    payload = {
+        "market": "GLOBAL",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "radar_data": radar_res,
+        "tracker_data": tracker_res
+    }
+    headers = {"Content-Type": "application/json", "Authorization": f"Bearer {SECRET_TOKEN}"}
+    try:
+        response = requests.post(f"{API_URL_BASE}/update_radar", json=payload, headers=headers)
+        print(f"✅ 【云端同步】双轨数据已发射！Cloudflare 返回状态码: {response.status_code}")
+    except Exception as e:
+        print(f"❌ 【云端同步失败】: {e}")
+
+# =====================================================================
+# 主运行引擎
+# =====================================================================
 def run_v4_daily_scanner():
-    print(f"INTOO V4 T模块：全球四大市场 (US/HK/JP/CN) 410只全景扫描中...\n")
-    # 批量下载以提速
+    print(f"INTOO V4 T模块：全球四大市场 (US/HK/JP/CN) 全景扫描中...\n")
     data = yf.download(TICKERS, period='3y', group_by='ticker', progress=False)
     
     results = []
@@ -421,7 +537,6 @@ def run_v4_daily_scanner():
                 
             is_valid, final_reason, metrics = check_v4_resonance_strict(df_ticker)
             if is_valid:
-                # 获取中文名
                 stock_name = NAME_MAP.get(ticker, "")
                 display_code = f"{ticker} {stock_name}".strip()
 
@@ -429,31 +544,34 @@ def run_v4_daily_scanner():
                     '市场': MARKET_MAP[ticker],
                     '代码': display_code,
                     '信号': final_reason,
-                    '现价': metrics['Close'],
-                    'ATR': metrics['ATR'],
+                    '现价': float(metrics['Close']),
+                    'ATR': float(metrics['ATR']),
                     '挤压率': metrics['Squeeze'],
                     '乖离率': metrics['Deviation'],
-                    '1R防线': metrics['Dynamic_Stop']
+                    '1R防线': float(metrics['Dynamic_Stop'])
                 })
         except Exception as e:
-            print(f"Error on {ticker}: {e}")
+            print(f"Error parsing {ticker}: {e}")
             continue
 
+    # ================= 核心：战役效能更新与双轨推流 =================
+    updated_tracker_data = update_tracker_logic(results, data)
+
     if results:
-        # 排序：按市场 A-Z，然后按代码
         results.sort(key=lambda x: (x['市场'], x['代码']))
-        
         df_res = pd.DataFrame(results)
         print("=================== V4 全球战术扣板白名单 ===================")
         print(df_res[['市场', '代码', '信号', '现价', '1R防线']].to_string(index=False))
         print("=============================================================\n")
         
         export_to_excel(results)
-        push_to_website(results)
         push_to_wechat(results)
     else:
-        print("📭 系统休眠：今日无可投标的。")
+        print("📭 系统休眠：今日无可投新标的，但已自动更新存量追踪防线。")
         push_to_wechat([])
+
+    # 无论有无新标的，强制推送同步双轨数据
+    push_v4_data_to_website(results, updated_tracker_data)
 
 if __name__ == "__main__":
     run_v4_daily_scanner()
