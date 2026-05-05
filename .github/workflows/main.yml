@@ -19,7 +19,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-      - - name: Execute V4 Radar Script
+      - name: Execute V4 Radar Script
         env:
           PUSHPLUS_TOKEN: ${{ secrets.PUSHPLUS_TOKEN }}
           SECRET_TOKEN: ${{ secrets.SECRET_TOKEN }}
