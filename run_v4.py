@@ -164,7 +164,7 @@ SHORT_GMMA = [3, 5, 8, 10, 12, 15]
 LONG_GMMA = [30, 35, 40, 45, 50, 60]
 
 def calc_v4_indicators(df):
-    """V4 系统底层指标计算引擎[cite: 1, 2]"""
+    """V4 系统底层指标计算引擎"""
     if df.empty or len(df) < 30:
         return None
     
@@ -197,7 +197,7 @@ def calc_v4_indicators(df):
 
 
 def check_v4_resonance_strict(df_daily):
-    """执行 V4 动态多周期物理共振审核[cite: 1, 2]"""
+    """执行 V4 动态多周期物理共振审核"""
     if len(df_daily) < 30:
         return False, "数据极端匮乏，无法建立坐标系", None
 
@@ -410,17 +410,18 @@ def fetch_tracker_from_cloud():
     return []
 
 def update_tracker_logic(daily_results, all_history_data):
-    """战役追踪逻辑：合并新标的，更新存量战役现价、收益与防线状态[cite: 1, 2]"""
+    """战役追踪逻辑：合并新标的，更新存量战役现价、收益与防线状态"""
     tracker_db = fetch_tracker_from_cloud()
     if not isinstance(tracker_db, list):
         tracker_db = []
         
     today_str = datetime.now().strftime("%Y-%m-%d")
 
-    # 1. 新兵入库：将今日雷达新出的标的加入追踪[cite: 1]
+    # 1. 新兵入库：将今日雷达新出的标的加入追踪
     for item in daily_results:
-        ticker = item['代码'].split(' ')[0]
-        campaign_id = f"{ticker}-{today_str}"
+        full_ticker = item['代码']
+        ticker_code = full_ticker.split(' ')[0]
+        campaign_id = f"{ticker_code}-{today_str}"
         
         # 防重复检查
         if not any(c.get('campaign_id') == campaign_id for c in tracker_db):
@@ -428,7 +429,7 @@ def update_tracker_logic(daily_results, all_history_data):
             stop_1r = float(item['1R防线'])
             tracker_db.append({
                 "campaign_id": campaign_id, 
-                "ticker": ticker, 
+                "ticker": full_ticker,  
                 "start_date": today_str,
                 "signal": item['信号'], 
                 "p_in": p_in, 
@@ -442,46 +443,47 @@ def update_tracker_logic(daily_results, all_history_data):
                 "r_multiple": "+0.0R"
             })
 
-    # 2. 老兵点名：更新所有存量战役[cite: 1]
+    # 2. 老兵点名：更新所有存量战役
     for campaign in tracker_db:
         if campaign.get('status') == "STOPPED": 
-            continue # 已阵亡，数据锁定不更新[cite: 1]
+            continue 
         
-        t = campaign['ticker']
+        t_full = campaign['ticker']
+        t_pure = t_full.split(' ')[0] # 提取纯代码用于获取股票数据
         try:
             # 兼容单个或多个 Ticker 的 yfinance 结构
-            df = all_history_data[t].copy() if len(TICKERS) > 1 else all_history_data.copy()
+            df = all_history_data[t_pure].copy() if len(TICKERS) > 1 else all_history_data.copy()
             df.dropna(subset=['Close'], inplace=True)
             if df.empty: continue
             
             curr_p = float(df['Close'].iloc[-1])
             p_in = float(campaign['p_in'])
             
-            # 追踪最高价 HHV 更新[cite: 1]
+            # 追踪最高价 HHV 更新
             if curr_p > campaign.get('hhv', 0): 
                 campaign['hhv'] = curr_p
             
-            # 计算 14D ATR 动态防线[cite: 1]
+            # 计算 14D ATR 动态防线
             tr = pd.concat([df['High']-df['Low'], (df['High']-df['Close'].shift()).abs(), (df['Low']-df['Close'].shift()).abs()], axis=1).max(axis=1)
             atr = float(tr.rolling(14).mean().iloc[-1])
             
             new_stop = round(campaign['hhv'] - 2.5 * atr, 2)
-            # 棘轮效应：防线只上移[cite: 1]
+            # 棘轮效应：防线只上移
             if new_stop > campaign.get('stop_dyn', 0): 
                 campaign['stop_dyn'] = new_stop
             
-            # 执行物理裁决状态更新[cite: 1]
+            # 执行物理裁决状态更新
             if curr_p <= campaign['stop_dyn']:
                 campaign['status'] = "STOPPED"
                 campaign['p_now'] = campaign['stop_dyn']
             else:
                 campaign['p_now'] = round(curr_p, 2)
-                # 2R 利润保护接管[cite: 1]
+                # 2R 利润保护接管
                 risk_1r = p_in - float(campaign['stop_initial'])
                 if risk_1r > 0 and (curr_p - p_in) >= 2 * risk_1r:
                     campaign['status'] = "LOCKED"
                     if campaign['stop_dyn'] < p_in: 
-                        campaign['stop_dyn'] = p_in # 上提盈亏线[cite: 1]
+                        campaign['stop_dyn'] = p_in # 上提盈亏线
             
             # 计算收益率
             start_d = datetime.strptime(campaign['start_date'], "%Y-%m-%d").date()
@@ -501,7 +503,7 @@ def update_tracker_logic(daily_results, all_history_data):
                 campaign['r_multiple'] = f"{'+' if r_val>0 else ''}{r_val:.1f}R"
                 
         except Exception as e: 
-            print(f"Error updating {t}: {e}")
+            print(f"Error updating {t_full}: {e}")
             continue
         
     return tracker_db
