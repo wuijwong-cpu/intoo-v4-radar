@@ -417,6 +417,9 @@ def update_tracker_logic(daily_results, all_history_data):
         
     today_str = datetime.now().strftime("%Y-%m-%d")
 
+    # 【新增】建立今日白名单字典，用于对比落选状态
+    today_valid_dict = {item['代码'].split(' ')[0]: item['信号'] for item in daily_results}
+
     # 1. 新兵入库：将今日雷达新出的标的加入追踪
     for item in daily_results:
         full_ticker = item['代码']
@@ -476,8 +479,25 @@ def update_tracker_logic(daily_results, all_history_data):
             if curr_p <= campaign['stop_dyn']:
                 campaign['status'] = "STOPPED"
                 campaign['p_now'] = campaign['stop_dyn']
+                
+                # 【新增联动】联动前端归因面板：注入系统平仓标识
+                campaign['attr_type'] = "SYSTEM"
+                campaign['attr_label'] = "系统平仓"
+                campaign['attr_log'] = "物理击穿 2.5*ATR 动态防线，系统强制终结。"
             else:
                 campaign['p_now'] = round(curr_p, 2)
+                
+                # 【核心新增】T模块落选/保持监控归因标注
+                if t_pure in today_valid_dict:
+                    # 标的依然在今日雷达中，更新连击信号
+                    campaign['signal'] = today_valid_dict[t_pure]
+                else:
+                    # 标的今日落选，重新调用底层验证引擎提取死因
+                    is_valid, reason, _ = check_v4_resonance_strict(df)
+                    if not is_valid:
+                        # 覆写信号，前端将直接在"触发信号"列展示落选原因
+                        campaign['signal'] = f"🚫落选: {reason}"
+                
                 # 2R 利润保护接管
                 risk_1r = p_in - float(campaign['stop_initial'])
                 if risk_1r > 0 and (curr_p - p_in) >= 2 * risk_1r:
