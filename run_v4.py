@@ -417,10 +417,10 @@ def update_tracker_logic(daily_results, all_history_data):
         
     today_str = datetime.now().strftime("%Y-%m-%d")
 
-    # 【新增】建立今日白名单字典，用于对比落选状态
+    # 【新增 1】建立今日雷达白名单字典，用于对比落选状态
     today_valid_dict = {item['代码'].split(' ')[0]: item['信号'] for item in daily_results}
 
-    # 1. 新兵入库：将今日雷达新出的标的加入追踪
+    # 1. 新兵入库：将今日雷达新出的标的加入追踪 (代码保持不变)
     for item in daily_results:
         full_ticker = item['代码']
         ticker_code = full_ticker.split(' ')[0]
@@ -454,10 +454,20 @@ def update_tracker_logic(daily_results, all_history_data):
         t_full = campaign['ticker']
         t_pure = t_full.split(' ')[0] # 提取纯代码用于获取股票数据
         try:
-            # 兼容单个或多个 Ticker 的 yfinance 结构
+            # === [修复点 1] 检查标的是否已被 M 模块从基准池中剔除 ===
+            if len(TICKERS) > 1 and t_pure not in all_history_data:
+                campaign['signal'] = "🚫落选: 宏观白名单剔除/停牌"
+                # 根据 V4 纪律，如果标的被 M 模块除名，不应继续持有
+                # campaign['status'] = "STOPPED" 
+                continue
+
             df = all_history_data[t_pure].copy() if len(TICKERS) > 1 else all_history_data.copy()
             df.dropna(subset=['Close'], inplace=True)
-            if df.empty: continue
+            
+            # === [修复点 2] 处理无有效数据的特殊情况 ===
+            if df.empty or len(df) < 30: 
+                campaign['signal'] = "🚫落选: 样本数据异常"
+                continue
             
             curr_p = float(df['Close'].iloc[-1])
             p_in = float(campaign['p_in'])
@@ -487,16 +497,48 @@ def update_tracker_logic(daily_results, all_history_data):
             else:
                 campaign['p_now'] = round(curr_p, 2)
                 
-                # 【核心新增】T模块落选/保持监控归因标注
+                # ==============================================================
+                # 【核心新增】T模块落选/保持监控归因标注 (Reverse Diagnosis)
+                # ==============================================================
                 if t_pure in today_valid_dict:
                     # 标的依然在今日雷达中，更新连击信号
                     campaign['signal'] = today_valid_dict[t_pure]
                 else:
-                    # 标的今日落选，重新调用底层验证引擎提取死因
-                    is_valid, reason, _ = check_v4_resonance_strict(df)
-                    if not is_valid:
-                        # 覆写信号，前端将直接在"触发信号"列展示落选原因
-                        campaign['signal'] = f"🚫落选: {reason}"
+                    # 标的今日落选，执行逆向诊断以提取具体死因
+                    df_d = calc_v4_indicators(df.copy())
+                    if df_d is not None:
+                        curr_d = df_d.iloc[-1]
+                        prev_d = df_d.iloc[-2]
+                        
+                        # 诊断 1: 乖离率超买 (空间失效)
+                        deviation_ratio = (curr_d['Close'] - curr_d['BOLL_MID']) / curr_d['ATR'] if not pd.isna(curr_d['ATR']) else 0
+                        if deviation_ratio > 1.5:
+                            campaign['signal'] = f"⚠️出列: 乖离率过大 ({deviation_ratio:.1f} ATR)"
+                        
+                        # 诊断 2: 波动率异散 (防剧震)
+                        elif 'BOLL_WIDTH' in curr_d and curr_d['BOLL_WIDTH'] > 0.30:
+                            campaign['signal'] = "⚠️出列: 波动率异常发散"
+                            
+                        # 诊断 3: BOLL 生命线跌穿 (技术破位)
+                        elif curr_d['Close'] <= curr_d['BOLL_MID']:
+                            campaign['signal'] = "🚫落选: 跌破中轨生命线"
+                        elif curr_d['BOLL_MID'] <= prev_d['BOLL_MID']:
+                            campaign['signal'] = "🚫落选: 中轨趋势走平或向下"
+                            
+                        # 诊断 4: GMMA 筹码崩坏 (技术破位)
+                        elif curr_d['SMA_60'] <= prev_d['SMA_60']:
+                            campaign['signal'] = "🚫落选: 长期均线组向下"
+                        else:
+                            d_short_min = min([curr_d[f'SMA_{p}'] for p in SHORT_GMMA])
+                            d_long_min = min([curr_d[f'SMA_{p}'] for p in LONG_GMMA])
+                            if d_short_min < d_long_min:
+                                campaign['signal'] = "🚫落选: 短期均线跌穿长期组"
+                            else:
+                                # 兜底诊断：若上述日线条件均未触发，通常是月/周线大周期压制，或MACD动能不足
+                                campaign['signal'] = "🚫落选: 大周期压制或动能衰竭"
+                    else:
+                        campaign['signal'] = "🚫落选: 指标计算异常"
+                # ==============================================================
                 
                 # 2R 利润保护接管
                 risk_1r = p_in - float(campaign['stop_initial'])
@@ -524,6 +566,8 @@ def update_tracker_logic(daily_results, all_history_data):
                 
         except Exception as e: 
             print(f"Error updating {t_full}: {e}")
+            if not str(campaign.get('signal', '')).startswith(('🚫落选:', '⚠️出列:')):
+                 campaign['signal'] = f"🚫落选: 系统更新异常 ({e})"
             continue
         
     return tracker_db
