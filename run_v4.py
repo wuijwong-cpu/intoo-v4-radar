@@ -419,6 +419,7 @@ def update_tracker_logic(daily_results, all_history_data):
 
     # 【新增 1】建立今日雷达白名单字典，用于对比落选状态
     today_valid_dict = {item['代码'].split(' ')[0]: item['信号'] for item in daily_results}
+    print(f"[TRACKER DEBUG] 今日符合共振条件的标的清单: {list(today_valid_dict.keys())}")
 
     # 1. 新兵入库：将今日雷达新出的标的加入追踪 (代码保持不变)
     for item in daily_results:
@@ -447,18 +448,19 @@ def update_tracker_logic(daily_results, all_history_data):
             })
 
     # 2. 老兵点名：更新所有存量战役
-    for campaign in tracker_db:
+    for i in range(len(tracker_db)):
+        campaign = tracker_db[i]
         if campaign.get('status') == "STOPPED": 
             continue 
         
         t_full = campaign['ticker']
         t_pure = t_full.split(' ')[0] # 提取纯代码用于获取股票数据
+        
         try:
             # === [修复点 1] 检查标的是否已被 M 模块从基准池中剔除 ===
             if len(TICKERS) > 1 and t_pure not in all_history_data:
-                campaign['signal'] = "🚫落选: 宏观白名单剔除/停牌"
-                # 根据 V4 纪律，如果标的被 M 模块除名，不应继续持有
-                # campaign['status'] = "STOPPED" 
+                tracker_db[i]['signal'] = "🚫落选: 宏观白名单剔除/停牌"
+                print(f"[TRACKER DEBUG] {t_pure} 被M模块剔除或停牌。")
                 continue
 
             df = all_history_data[t_pure].copy() if len(TICKERS) > 1 else all_history_data.copy()
@@ -466,7 +468,8 @@ def update_tracker_logic(daily_results, all_history_data):
             
             # === [修复点 2] 处理无有效数据的特殊情况 ===
             if df.empty or len(df) < 30: 
-                campaign['signal'] = "🚫落选: 样本数据异常"
+                tracker_db[i]['signal'] = "🚫落选: 样本数据异常"
+                print(f"[TRACKER DEBUG] {t_pure} 数据异常。")
                 continue
             
             curr_p = float(df['Close'].iloc[-1])
@@ -474,100 +477,105 @@ def update_tracker_logic(daily_results, all_history_data):
             
             # 追踪最高价 HHV 更新
             if curr_p > campaign.get('hhv', 0): 
-                campaign['hhv'] = curr_p
+                tracker_db[i]['hhv'] = curr_p
             
             # 计算 14D ATR 动态防线
             tr = pd.concat([df['High']-df['Low'], (df['High']-df['Close'].shift()).abs(), (df['Low']-df['Close'].shift()).abs()], axis=1).max(axis=1)
             atr = float(tr.rolling(14).mean().iloc[-1])
             
-            new_stop = round(campaign['hhv'] - 2.5 * atr, 2)
+            new_stop = round(tracker_db[i]['hhv'] - 2.5 * atr, 2)
             # 棘轮效应：防线只上移
             if new_stop > campaign.get('stop_dyn', 0): 
-                campaign['stop_dyn'] = new_stop
+                tracker_db[i]['stop_dyn'] = new_stop
             
             # 执行物理裁决状态更新
-            if curr_p <= campaign['stop_dyn']:
-                campaign['status'] = "STOPPED"
-                campaign['p_now'] = campaign['stop_dyn']
+            if curr_p <= tracker_db[i]['stop_dyn']:
+                tracker_db[i]['status'] = "STOPPED"
+                tracker_db[i]['p_now'] = tracker_db[i]['stop_dyn']
                 
                 # 【新增联动】联动前端归因面板：注入系统平仓标识
-                campaign['attr_type'] = "SYSTEM"
-                campaign['attr_label'] = "系统平仓"
-                campaign['attr_log'] = "物理击穿 2.5*ATR 动态防线，系统强制终结。"
+                tracker_db[i]['attr_type'] = "SYSTEM"
+                tracker_db[i]['attr_label'] = "系统平仓"
+                tracker_db[i]['attr_log'] = "物理击穿 2.5*ATR 动态防线，系统强制终结。"
+                print(f"[TRACKER DEBUG] {t_pure} 触发止损平仓。")
             else:
-                campaign['p_now'] = round(curr_p, 2)
+                tracker_db[i]['p_now'] = round(curr_p, 2)
                 
                 # ==============================================================
                 # 【核心新增】T模块落选/保持监控归因标注 (Reverse Diagnosis)
                 # ==============================================================
                 if t_pure in today_valid_dict:
                     # 标的依然在今日雷达中，更新连击信号
-                    campaign['signal'] = today_valid_dict[t_pure]
+                    tracker_db[i]['signal'] = today_valid_dict[t_pure]
+                    print(f"[TRACKER DEBUG] {t_pure} 保持共振。")
                 else:
                     # 标的今日落选，执行逆向诊断以提取具体死因
                     df_d = calc_v4_indicators(df.copy())
-                    if df_d is not None:
+                    if df_d is not None and len(df_d) >= 2:
                         curr_d = df_d.iloc[-1]
                         prev_d = df_d.iloc[-2]
                         
                         # 诊断 1: 乖离率超买 (空间失效)
                         deviation_ratio = (curr_d['Close'] - curr_d['BOLL_MID']) / curr_d['ATR'] if not pd.isna(curr_d['ATR']) else 0
                         if deviation_ratio > 1.5:
-                            campaign['signal'] = f"⚠️出列: 乖离率过大 ({deviation_ratio:.1f} ATR)"
+                            tracker_db[i]['signal'] = f"⚠️出列: 乖离率过大 ({deviation_ratio:.1f} ATR)"
                         
                         # 诊断 2: 波动率异散 (防剧震)
                         elif 'BOLL_WIDTH' in curr_d and curr_d['BOLL_WIDTH'] > 0.30:
-                            campaign['signal'] = "⚠️出列: 波动率异常发散"
+                            tracker_db[i]['signal'] = "⚠️出列: 波动率异常发散"
                             
                         # 诊断 3: BOLL 生命线跌穿 (技术破位)
                         elif curr_d['Close'] <= curr_d['BOLL_MID']:
-                            campaign['signal'] = "🚫落选: 跌破中轨生命线"
+                            tracker_db[i]['signal'] = "🚫落选: 跌穿日线中轨"
                         elif curr_d['BOLL_MID'] <= prev_d['BOLL_MID']:
-                            campaign['signal'] = "🚫落选: 中轨趋势走平或向下"
+                            tracker_db[i]['signal'] = "🚫落选: 中轨走平/向下拐头"
                             
                         # 诊断 4: GMMA 筹码崩坏 (技术破位)
                         elif curr_d['SMA_60'] <= prev_d['SMA_60']:
-                            campaign['signal'] = "🚫落选: 长期均线组向下"
+                            tracker_db[i]['signal'] = "🚫落选: 长期均线组向下"
                         else:
                             d_short_min = min([curr_d[f'SMA_{p}'] for p in SHORT_GMMA])
                             d_long_min = min([curr_d[f'SMA_{p}'] for p in LONG_GMMA])
                             if d_short_min < d_long_min:
-                                campaign['signal'] = "🚫落选: 短期均线跌穿长期组"
+                                tracker_db[i]['signal'] = "🚫落选: 短期均线跌穿长线组"
                             else:
                                 # 兜底诊断：若上述日线条件均未触发，通常是月/周线大周期压制，或MACD动能不足
-                                campaign['signal'] = "🚫落选: 大周期压制或动能衰竭"
+                                _, temp_reason, _ = check_v4_resonance_strict(df)
+                                tracker_db[i]['signal'] = f"🚫落选: {temp_reason}" if temp_reason else "🚫落选: 大周期压制或动能不足"
                     else:
-                        campaign['signal'] = "🚫落选: 指标计算异常"
+                        tracker_db[i]['signal'] = "🚫落选: 日线指标计算异常"
+                    
+                    print(f"[TRACKER DEBUG] {t_pure} 已落选，原因提取: {tracker_db[i]['signal']}")
                 # ==============================================================
                 
                 # 2R 利润保护接管
                 risk_1r = p_in - float(campaign['stop_initial'])
                 if risk_1r > 0 and (curr_p - p_in) >= 2 * risk_1r:
-                    campaign['status'] = "LOCKED"
-                    if campaign['stop_dyn'] < p_in: 
-                        campaign['stop_dyn'] = p_in # 上提盈亏线
+                    tracker_db[i]['status'] = "LOCKED"
+                    if tracker_db[i]['stop_dyn'] < p_in: 
+                        tracker_db[i]['stop_dyn'] = p_in # 上提盈亏线
             
             # 计算收益率
             start_d = datetime.strptime(campaign['start_date'], "%Y-%m-%d").date()
             days = max((date.today() - start_d).days, 1)
             
-            ret = ((campaign['p_now'] - p_in) / p_in) * 100
-            campaign['abs_return'] = f"{'+' if ret>0 else ''}{ret:.2f}%"
+            ret = ((tracker_db[i]['p_now'] - p_in) / p_in) * 100
+            tracker_db[i]['abs_return'] = f"{'+' if ret>0 else ''}{ret:.2f}%"
             
             if days >= 5:
                 ann = ((1 + ret/100)**(365/days) - 1) * 100
-                campaign['ann_return'] = f"{'+' if ann>0 else ''}{ann:.1f}%"
+                tracker_db[i]['ann_return'] = f"{'+' if ann>0 else ''}{ann:.1f}%"
             else:
-                campaign['ann_return'] = "N/A"
+                tracker_db[i]['ann_return'] = "N/A"
             
             if risk_1r > 0:
-                r_val = (campaign['p_now'] - p_in) / risk_1r
-                campaign['r_multiple'] = f"{'+' if r_val>0 else ''}{r_val:.1f}R"
+                r_val = (tracker_db[i]['p_now'] - p_in) / risk_1r
+                tracker_db[i]['r_multiple'] = f"{'+' if r_val>0 else ''}{r_val:.1f}R"
                 
         except Exception as e: 
             print(f"Error updating {t_full}: {e}")
             if not str(campaign.get('signal', '')).startswith(('🚫落选:', '⚠️出列:')):
-                 campaign['signal'] = f"🚫落选: 系统更新异常 ({e})"
+                 tracker_db[i]['signal'] = f"🚫落选: 追踪数据更新异常 ({e})"
             continue
         
     return tracker_db
