@@ -13,7 +13,7 @@ warnings.filterwarnings('ignore')
 # INTOO V4-Quantamental 通信与广播配置
 # =====================================================================
 PUSHPLUS_TOKEN = os.environ.get("PUSHPLUS_TOKEN")
-PUSHPLUS_TOPIC = "INTOO_V4"                        # 群组编码
+PUSHPLUS_TOPIC = "INTOO_V4" 
 
 API_URL_BASE = "https://ito-core-proxy.wuijwong.workers.dev/api"
 SECRET_TOKEN = os.environ.get("SECRET_TOKEN")
