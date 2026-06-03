@@ -148,6 +148,21 @@ NAME_MAP = {
     '5253.T': 'Cover', '4443.T': 'Sansan', '3911.T': 'Aiming', '6619.T': 'W-SCOPE', 
     '4488.T': 'AI inside', '6506.T': '安川电机'
 }
+
+# =====================================================================
+# V4 宏观重力基准：全球 8 大核心指数代码 (Yahoo Finance)
+# =====================================================================
+INDEX_MAP = {
+    '^NDX': {'id': 'NDX', 'name': '纳指100'},
+    '^GSPC': {'id': 'SPX', 'name': '标普500'},
+    '^DJI': {'id': 'DJI', 'name': '道琼斯'},
+    '^HSI': {'id': 'HSI', 'name': '恒生指数'},
+    '^HSTECH': {'id': 'HSTECH', 'name': '恒生科技'},
+    '^N225': {'id': 'N225', 'name': '日经225'},
+    '000001.SS': {'id': 'SHCOMP', 'name': '上证指数'},
+    '399001.SZ': {'id': 'SZCOMP', 'name': '深证成指'}
+}
+
 # 动态生成总列表与市场路由映射 (Market Map)
 GLOBAL_POOLS = {'US': V4_US_UNIVERSE, 'JP': V4_JP_UNIVERSE, 'HK': V4_HK_UNIVERSE, 'CN': V4_CN_UNIVERSE}
 TICKERS = []
@@ -194,6 +209,81 @@ def calc_v4_indicators(df):
     df['ATR'] = tr['TR'].rolling(window=14).mean()
     
     return df
+
+def translate_v4_semantics(df_slice):
+    """将物理量化数据翻译为 V4 体系的文本语义"""
+    if df_slice is None or df_slice.empty:
+        return {'macd': '数据缺失', 'gmma': '数据缺失', 'boll': '数据缺失'}
+    
+    curr = df_slice.iloc[-1]
+    
+    # 1. MACD 语义翻译
+    macd_res = "零轴纠缠"
+    if not pd.isna(curr.get('MACD_DIF')) and not pd.isna(curr.get('MACD_DEA')):
+        dif, dea = curr['MACD_DIF'], curr['MACD_DEA']
+        if dif > 0 and dif > dea: macd_res = "水上金叉"
+        elif dif > 0 and dif < dea: macd_res = "水上死叉"
+        elif dif < 0 and dif > dea: macd_res = "水下金叉"
+        elif dif < 0 and dif < dea: macd_res = "水下死叉"
+    
+    # 2. GMMA 语义翻译
+    gmma_res = "纠缠走平"
+    try:
+        short_min = min([curr[f'SMA_{p}'] for p in SHORT_GMMA])
+        short_max = max([curr[f'SMA_{p}'] for p in SHORT_GMMA])
+        long_min = min([curr[f'SMA_{p}'] for p in LONG_GMMA])
+        long_max = max([curr[f'SMA_{p}'] for p in LONG_GMMA])
+        
+        if short_min > long_max: gmma_res = "多头排列"
+        elif short_max < long_min: gmma_res = "空头压制"
+        elif short_min > long_min and short_min < long_max: gmma_res = "短期组上"
+    except:
+        pass
+
+    # 3. BOLL 语义翻译
+    boll_res = "贴轨飞行"
+    if not pd.isna(curr.get('BOLL_MID')):
+        if curr['Close'] > curr['BOLL_UPPER']: boll_res = "突破上轨"
+        elif curr['Close'] > curr['BOLL_MID']: boll_res = "中轨之上"
+        elif curr['Close'] < curr['BOLL_LOWER']: boll_res = "跌破下轨"
+        elif curr['Close'] < curr['BOLL_MID']: boll_res = "中轨之下"
+        if curr.get('BOLL_WIDTH', 1) < 0.15: boll_res = "极度收口"
+        
+    return {'macd': macd_res, 'gmma': gmma_res, 'boll': boll_res}
+
+def generate_macro_matrix():
+    """生成 8 大指数的日、周、月三周期物理共振矩阵"""
+    print("INTOO V4：正在测算 8 大宏观指数重力矩阵...")
+    tickers = list(INDEX_MAP.keys())
+    data = yf.download(tickers, period='3y', group_by='ticker', progress=False)
+    
+    matrix_results = []
+    for ticker, meta in INDEX_MAP.items():
+        try:
+            df = data[ticker].copy() if len(tickers) > 1 else data.copy()
+            df.dropna(subset=['Close'], inplace=True)
+            if df.empty: continue
+            
+            # 切片多周期
+            df_w = df.resample('W-FRI').agg({'Open':'first','High':'max','Low':'min','Close':'last'}).dropna()
+            df_m = df.resample('ME').agg({'Open':'first','High':'max','Low':'min','Close':'last'}).dropna()
+            
+            # 计算指标
+            df_d_calc = calc_v4_indicators(df.copy())
+            df_w_calc = calc_v4_indicators(df_w.copy())
+            df_m_calc = calc_v4_indicators(df_m.copy())
+            
+            matrix_results.append({
+                'id': meta['id'],
+                'name': meta['name'],
+                'm1': translate_v4_semantics(df_m_calc),
+                'w1': translate_v4_semantics(df_w_calc),
+                'd1': translate_v4_semantics(df_d_calc)
+            })
+        except Exception as e:
+            print(f"⚠️ 指数 {ticker} 测算失败: {e}")
+            
+    return matrix_results
 
 
 def check_v4_resonance_strict(df_daily):
@@ -508,18 +598,19 @@ def update_tracker_logic(daily_results, all_history_data):
         
     return tracker_db
 
-def push_v4_data_to_website(radar_res, tracker_res):
-    """【双轨推流】同时将雷达和追踪器数据同步到 Cloudflare"""
+def push_v4_data_to_website(radar_res, tracker_res, matrix_res):
+    """【多轨推流】同时将雷达、追踪器和重力矩阵数据同步到 Cloudflare"""
     payload = {
         "market": "GLOBAL",
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "radar_data": radar_res,
-        "tracker_data": tracker_res
+        "tracker_data": tracker_res,
+        "matrix_data": matrix_res
     }
     headers = {"Content-Type": "application/json", "Authorization": f"Bearer {SECRET_TOKEN}"}
     try:
         response = requests.post(f"{API_URL_BASE}/update_radar", json=payload, headers=headers)
-        print(f"✅ 【云端同步】双轨数据已发射！Cloudflare 返回状态码: {response.status_code}")
+        print(f"✅ 【云端同步】三轨数据已发射！Cloudflare 返回状态码: {response.status_code}")
     except Exception as e:
         print(f"❌ 【云端同步失败】: {e}")
 
@@ -572,8 +663,11 @@ def run_v4_daily_scanner():
         print("📭 系统休眠：今日无可投新标的，但已自动更新存量追踪防线。")
         push_to_wechat([])
 
-    # 无论有无新标的，强制推送同步双轨数据
-    push_v4_data_to_website(results, updated_tracker_data)
+    # ================= 核心：生成宏观重力矩阵 =================
+    matrix_results = generate_macro_matrix()
+
+    # 无论有无新标的，强制推送同步三轨数据
+    push_v4_data_to_website(results, updated_tracker_data, matrix_results)
 
 if __name__ == "__main__":
     run_v4_daily_scanner()
