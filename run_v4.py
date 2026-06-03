@@ -185,7 +185,7 @@ def calc_v4_indicators(df):
     
     # 1. 计算 GMMA 均线组
     for p in SHORT_GMMA + LONG_GMMA:
-        df[f'SMA_{p}'] = df['Close'].rolling(window=p).mean()
+        df[f'EMA_{p}'] = df['Close'].ewm(span=p, adjust=False).mean()
         
     # 2. 计算 BOLL 布尔带 (20, 2)
     df['BOLL_MID'] = df['Close'].rolling(window=20).mean()
@@ -229,10 +229,10 @@ def translate_v4_semantics(df_slice):
     # 2. GMMA 语义翻译
     gmma_res = "纠缠走平"
     try:
-        short_min = min([curr[f'SMA_{p}'] for p in SHORT_GMMA])
-        short_max = max([curr[f'SMA_{p}'] for p in SHORT_GMMA])
-        long_min = min([curr[f'SMA_{p}'] for p in LONG_GMMA])
-        long_max = max([curr[f'SMA_{p}'] for p in LONG_GMMA])
+        short_min = min([curr[f'EMA_{p}'] for p in SHORT_GMMA])
+        short_max = max([curr[f'EMA_{p}'] for p in SHORT_GMMA])
+        long_min = min([curr[f'EMA_{p}'] for p in LONG_GMMA])
+        long_max = max([curr[f'EMA_{p}'] for p in LONG_GMMA])
         
         if short_min > long_max: gmma_res = "多头排列"
         elif short_max < long_min: gmma_res = "空头压制"
@@ -331,8 +331,8 @@ def check_v4_resonance_strict(df_daily):
         if m_boll_pass: m_pass_count += 1
     # 3. GMMA 条件 (长期组斜率)
         m_gmma_pass = True
-        if prev_m is not None and not pd.isna(curr_m['SMA_60']):
-            if curr_m['SMA_60'] < prev_m['SMA_60']:
+        if prev_m is not None and not pd.isna(curr_m['EMA_60']):
+            if curr_m['EMA_60'] < prev_m['EMA_60']:
                 m_gmma_pass = False
         if m_gmma_pass: m_pass_count += 1
             
@@ -343,8 +343,8 @@ def check_v4_resonance_strict(df_daily):
    # 自修：第二步：周线级别审核 (仅 BOLL、GMMA 具备否决权)
     if curr_w is not None:
         # 补充 1.3：周线 GMMA 结构测试 (短期组必须在长期组内部或上方)
-        w_short_min = min([curr_w[f'SMA_{p}'] for p in SHORT_GMMA])
-        w_long_min = min([curr_w[f'SMA_{p}'] for p in LONG_GMMA])
+        w_short_min = min([curr_w[f'EMA_{p}'] for p in SHORT_GMMA])
+        w_long_min = min([curr_w[f'EMA_{p}'] for p in LONG_GMMA])
         if w_short_min < w_long_min:
             return False, "周线GMMA短期组跌穿长期组底线", None
 
@@ -358,11 +358,11 @@ def check_v4_resonance_strict(df_daily):
    # 自修：第三步：日线级别审核 (BOLL、GMMA 及原有风控项)
 
     # 1. 日线 GMMA 筹码结构
-    if curr_d['SMA_60'] <= prev_d['SMA_60']:
+    if curr_d['EMA_60'] <= prev_d['EMA_60']:
         return False, "日线长期GMMA组向下 (不向上)", None
 
-    d_short_min = min([curr_d[f'SMA_{p}'] for p in SHORT_GMMA])
-    d_long_min = min([curr_d[f'SMA_{p}'] for p in LONG_GMMA])   # 长期组最后一根线 = SMA_60
+    d_short_min = min([curr_d[f'EMA_{p}'] for p in SHORT_GMMA])
+    d_long_min = min([curr_d[f'EMA_{p}'] for p in LONG_GMMA])   # 长期组最后一根线 = EMA_60
     if d_short_min < d_long_min:
         return False, "短期均线跌穿长期组最后一根线", None
 
@@ -395,12 +395,12 @@ def check_v4_resonance_strict(df_daily):
         
         # === 对每一过去一天，完整检查日线级别所有严格条件 ===
         # ① 长期GMMA必须向上
-        if lookback_prev is not None and lookback_curr['SMA_60'] <= lookback_prev['SMA_60']:
+        if lookback_prev is not None and lookback_curr['EMA_60'] <= lookback_prev['EMA_60']:
             break
         
         # ② 短期GMMA允许进入长期组，但不能跌穿最后一根线
-        lb_short_min = min([lookback_curr[f'SMA_{p}'] for p in SHORT_GMMA])
-        lb_long_min = min([lookback_curr[f'SMA_{p}'] for p in LONG_GMMA])
+        lb_short_min = min([lookback_curr[f'EMA_{p}'] for p in SHORT_GMMA])
+        lb_long_min = min([lookback_curr[f'EMA_{p}'] for p in LONG_GMMA])
         if lb_short_min < lb_long_min:
             break
         
