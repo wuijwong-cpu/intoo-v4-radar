@@ -13,7 +13,7 @@ warnings.filterwarnings('ignore')
 # INTOO V4-Quantamental 通信与广播配置
 # =====================================================================
 PUSHPLUS_TOKEN = os.environ.get("PUSHPLUS_TOKEN")
-PUSHPLUS_TOPIC = "INTOO_V4"                        # 群组编码
+PUSHPLUS_TOPIC = "INTOO_V4"
 
 API_URL_BASE = "https://ito-core-proxy.wuijwong.workers.dev/api"
 SECRET_TOKEN = os.environ.get("SECRET_TOKEN")
@@ -53,7 +53,6 @@ V4_CN_UNIVERSE = {
 # === V4 终端大屏专属：全球四大市场股票中文名称终极映射表 ===
 # =====================================================================
 NAME_MAP = {
-    # 🇺🇸 ============ US 美股战场 ============
     'XOM': '埃克森美孚', 'CVX': '雪佛龙', 'COST': '开市客', 'JNJ': '强生', 'PG': '宝洁', 
     'KO': '可口可乐', 'PEP': '百事', 'WMT': '沃尔玛', 'MCD': '麦当劳', 'ABBV': '艾伯维', 
     'MRK': '默沙东', 'HD': '家得宝', 'UNH': '联合健康', 'V': 'Visa', 'MA': '万事达', 
@@ -78,8 +77,6 @@ NAME_MAP = {
     'URI': '联合租赁', 'PWR': '广达服务', 'BA': '波音', 'GM': '通用汽车', 'DOW': '陶氏化学', 
     'LYB': '利安德巴塞尔', 'COIN': 'Coinbase', 'MSTR': '微策投资', 'HOOD': 'Robinhood', 
     'CVNA': 'Carvana', 'RDDT': 'Reddit', 'ASTS': 'AST SpaceMobile', 'LUNR': '直觉机器', 'RBLX': 'Roblox',
-
-    # 🇭🇰 ============ HK 港股战场 ============
     '0883.HK': '中国海油', '0857.HK': '中国石油', '0386.HK': '中国石化', '1088.HK': '中国神华', '1171.HK': '兖矿能源', 
     '0941.HK': '中国移动', '0728.HK': '中国电信', '0762.HK': '中国联通', '1398.HK': '工商银行', '0939.HK': '建设银行', 
     '3988.HK': '中国银行', '1288.HK': '农业银行', '3968.HK': '招商银行', '1658.HK': '邮储银行', '2628.HK': '中国人寿', 
@@ -100,10 +97,7 @@ NAME_MAP = {
     '1919.HK': '中远海控', '1308.HK': '海丰国际', '0316.HK': '东方海外', '0338.HK': '上海石化', '1157.HK': '中联重科', 
     '2333.HK': '长城汽车', '2238.HK': '广汽集团', '6030.HK': '中信证券', '3908.HK': '中金公司', '0388.HK': '港交所', 
     '2600.HK': '中国铝业', '3900.HK': '绿城中国', '9992.HK': '泡泡玛特', '1797.HK': '东方甄选', '0020.HK': '商汤',
-    '1357.HK': '美图公司', '6682.HK': '第四范式', '1024.HK': '快手', '2015.HK': '理想汽车', '9868.HK': '小鹏汽车',
-    '1109.HK': '华润置地',
-    
-    # 🇨🇳 ============ CN A股战场 ============
+    '1357.HK': '美图公司', '6682.HK': '第四范式', '1024.HK': '快手', '2015.HK': '理想汽车', '9868.HK': '小鹏汽车', '1109.HK': '华润置地',
     '601088.SS': '中国神华', '601225.SS': '陕西煤业', '601857.SS': '中国石油', '600028.SS': '中国石化', '600900.SS': '长江电力', 
     '600011.SS': '华能国际', '600886.SS': '国投电力', '601107.SS': '四川路桥', '601006.SS': '大秦铁路', '601398.SS': '工商银行', 
     '601288.SS': '农业银行', '601988.SS': '中国银行', '601939.SS': '建设银行', '601328.SS': '交通银行', '600036.SS': '招商银行', 
@@ -125,8 +119,6 @@ NAME_MAP = {
     '300059.SZ': '东方财富', '002085.SZ': '万丰奥威', '002229.SZ': '鸿博股份', '603083.SS': '剑桥科技', '601127.SS': '赛力斯', 
     '002261.SZ': '拓维信息', '000158.SZ': '常山北明', '603662.SS': '柯力传感', '688017.SS': '绿的谐波', '000063.SZ': '中兴通讯', 
     '301308.SZ': '江波龙', '600760.SS': '中航沈飞', '300782.SZ': '卓胜微', '002460.SZ': '赣锋锂业',
-
-    # 🇯🇵 ============ JP 日股战场 ============
     '8058.T': '三菱商事', '8031.T': '三井物产', '8001.T': '伊藤忠商事', '8002.T': '丸红', '8053.T': '住友商事', 
     '8306.T': '三菱UFJ', '8316.T': '三井住友', '8411.T': '瑞穗金融', '8766.T': '东京海上', '8725.T': 'MS&AD保险', 
     '8591.T': '欧力士', '9432.T': 'NTT', '9433.T': 'KDDI', '9434.T': '软银(国内)', '7203.T': '丰田汽车', 
@@ -139,7 +131,8 @@ NAME_MAP = {
     '6098.T': '里库路特', '4307.T': '野村综合研究所', '4661.T': '东方乐园(迪士尼)', '2413.T': 'M3', '4568.T': '第一三共', 
     '4523.T': '卫材', '6367.T': '大金工业', '7733.T': '奥林巴斯', '6902.T': '电装', '6503.T': '三菱电机', 
     '6504.T': '富士电机', '7269.T': '铃木汽车', '6954.T': '发那科', '8113.T': '尤妮佳', '4911.T': '资生堂', 
-    '4704.T': '趋势科技', '3092.T': '奥野制薬', '6890.T': 'SCREEN Holdings', '6961.T': '太阳诱电', '7751.T': '佳能', '6701.T': 'NEC', '6702.T': '富士通',
+    '4704.T': '趋势科技', '3092.T': '奥野制薬', '6890.T': 'SCREEN Holdings', '6961.T': '太阳诱电', '7751.T': '佳能', 
+    '6701.T': 'NEC', '6702.T': '富士通',
     '5401.T': '新日本制铁', '5411.T': 'JFE控股', '6301.T': '小松制作所', '6326.T': '久保田', '4005.T': '住友化学', 
     '9101.T': '日本邮船', '9104.T': '商船三井', '9107.T': '川崎汽船', '7011.T': '三菱重工', '7012.T': '川崎重工', 
     '7013.T': 'IHI', '8801.T': '三井不动产', '8802.T': '三菱地所', '3402.T': '东丽', '3407.T': '旭化成', 
@@ -158,13 +151,12 @@ INDEX_MAP = {
     '^GSPC': {'id': 'SPX', 'name': '标普500'},
     '^DJI': {'id': 'DJI', 'name': '道琼斯'},
     '^HSI': {'id': 'HSI', 'name': '恒生指数'},
-    '^HSTECH': {'id': 'HSTECH', 'name': '恒生科技'},
     '^N225': {'id': 'N225', 'name': '日经225'},
     '000001.SS': {'id': 'SHCOMP', 'name': '上证指数'},
     '399001.SZ': {'id': 'SZCOMP', 'name': '深证成指'}
 }
 
-# 动态生成总列表与市场路由映射 (Market Map)
+# 动态生成总列表与市场路由映射
 GLOBAL_POOLS = {'US': V4_US_UNIVERSE, 'JP': V4_JP_UNIVERSE, 'HK': V4_HK_UNIVERSE, 'CN': V4_CN_UNIVERSE}
 TICKERS = []
 MARKET_MAP = {}
@@ -175,6 +167,16 @@ for market_name, universe in GLOBAL_POOLS.items():
             TICKERS.append(ticker)
             MARKET_MAP[ticker] = market_name
 
+# =====================================================================
+# 【V4.2 新增】分市场专属ML阈值参数表
+# =====================================================================
+ML_THRESHOLDS = {
+    'US': {'squeeze_max': 0.0225, 'deviation_max': 0.44, 'deviation_min': None},
+    'HK': {'squeeze_max': 0.0585, 'deviation_max': 0.44, 'deviation_min': 0.23},
+    'CN': {'squeeze_max': 0.0535, 'deviation_max': 1.50, 'deviation_min': 0.75},
+    'JP': {'squeeze_max': 0.0775, 'deviation_max': 0.44, 'deviation_min': None}
+}
+
 # 参数设定
 SHORT_GMMA = [3, 5, 8, 10, 12, 15]
 LONG_GMMA = [30, 35, 40, 45, 50, 60]
@@ -184,30 +186,27 @@ def calc_v4_indicators(df):
     if df.empty or len(df) < 30:
         return None
     
-    # 1. 计算 GMMA 均线组
     for p in SHORT_GMMA + LONG_GMMA:
         df[f'EMA_{p}'] = df['Close'].ewm(span=p, adjust=False).mean()
         
-    # 2. 计算 BOLL 布尔带 (20, 2)
     df['BOLL_MID'] = df['Close'].rolling(window=20).mean()
     df['BOLL_STD'] = df['Close'].rolling(window=20).std()
     df['BOLL_UPPER'] = df['BOLL_MID'] + 2 * df['BOLL_STD']
     df['BOLL_LOWER'] = df['BOLL_MID'] - 2 * df['BOLL_STD']
     df['BOLL_WIDTH'] = (df['BOLL_UPPER'] - df['BOLL_LOWER']) / df['BOLL_MID']
     
-    # 3. 计算 MACD (12, 26, 9)
     exp1 = df['Close'].ewm(span=12, adjust=False).mean()
     exp2 = df['Close'].ewm(span=26, adjust=False).mean()
     df['MACD_DIF'] = exp1 - exp2
     df['MACD_DEA'] = df['MACD_DIF'].ewm(span=9, adjust=False).mean()
     
-    # 4. 计算 ATR (14)
     high_low = df['High'] - df['Low']
     high_close = (df['High'] - df['Close'].shift()).abs()
     low_close = (df['Low'] - df['Close'].shift()).abs()
-    tr = df[['High', 'Low', 'Close']].copy()
-    tr['TR'] = pd.concat([high_low, high_close, low_close], axis=1).max(axis=1)
-    df['ATR'] = tr['TR'].rolling(window=14).mean()
+    tr = pd.concat([high_low, high_close, low_close], axis=1).max(axis=1)
+    df['ATR'] = tr.rolling(window=14).mean()
+    
+    df['MA200'] = df['Close'].rolling(window=200).mean()
     
     return df
 
@@ -218,7 +217,6 @@ def translate_v4_semantics(df_slice):
     
     curr = df_slice.iloc[-1]
     
-    # 1. MACD 语义翻译
     macd_res = "零轴纠缠"
     if not pd.isna(curr.get('MACD_DIF')) and not pd.isna(curr.get('MACD_DEA')):
         dif, dea = curr['MACD_DIF'], curr['MACD_DEA']
@@ -227,7 +225,6 @@ def translate_v4_semantics(df_slice):
         elif dif < 0 and dif > dea: macd_res = "水下金叉"
         elif dif < 0 and dif < dea: macd_res = "水下死叉"
     
-    # 2. GMMA 语义翻译
     gmma_res = "纠缠走平"
     try:
         short_min = min([curr[f'EMA_{p}'] for p in SHORT_GMMA])
@@ -241,7 +238,6 @@ def translate_v4_semantics(df_slice):
     except:
         pass
 
-    # 3. BOLL 语义翻译
     boll_res = "贴轨飞行"
     if not pd.isna(curr.get('BOLL_MID')):
         if curr['Close'] > curr['BOLL_UPPER']: boll_res = "突破上轨"
@@ -253,8 +249,8 @@ def translate_v4_semantics(df_slice):
     return {'macd': macd_res, 'gmma': gmma_res, 'boll': boll_res}
 
 def generate_macro_matrix():
-    """生成 8 大指数的日、周、月三周期物理共振矩阵"""
-    print("INTOO V4：正在测算 8 大宏观指数重力矩阵...")
+    """生成核心指数的日、周、月三周期物理共振矩阵"""
+    print("INTOO V4：正在测算核心宏观指数重力矩阵...")
     tickers = list(INDEX_MAP.keys())
     data = yf.download(tickers, period='3y', group_by='ticker', progress=False)
     
@@ -265,11 +261,9 @@ def generate_macro_matrix():
             df.dropna(subset=['Close'], inplace=True)
             if df.empty: continue
             
-            # 切片多周期
             df_w = df.resample('W-FRI').agg({'Open':'first','High':'max','Low':'min','Close':'last'}).dropna()
             df_m = df.resample('ME').agg({'Open':'first','High':'max','Low':'min','Close':'last'}).dropna()
             
-            # 计算指标
             df_d_calc = calc_v4_indicators(df.copy())
             df_w_calc = calc_v4_indicators(df_w.copy())
             df_m_calc = calc_v4_indicators(df_m.copy())
@@ -282,159 +276,131 @@ def generate_macro_matrix():
                 'd1': translate_v4_semantics(df_d_calc)
             })
         except Exception as e:
-            print(f"⚠️ 指数 {ticker} 测算失败: {e}")
+            print(f"  ⚠️ 指数 {ticker} 测算失败: {e}")
             
     return matrix_results
 
 
-def check_v4_resonance_strict(df_daily):
-    """执行 V4 动态多周期物理共振审核"""
-    if len(df_daily) < 30:
-        return False, "数据极端匮乏，无法建立坐标系", None
+def check_v4_resonance_strict(df_daily, ticker):
+    """执行 V4 动态多周期物理共振审核（V4.2 分市场ML阈值）"""
+    if len(df_daily) < 200:
+        return False, "数据不足 (需200天)", None
+
+    market = MARKET_MAP.get(ticker, 'US')
+    thresholds = ML_THRESHOLDS.get(market, ML_THRESHOLDS['US'])
 
     df_weekly = df_daily.resample('W-FRI').agg({'Open':'first','High':'max','Low':'min','Close':'last'}).dropna()
-    df_monthly = df_daily.resample('ME').agg({'Open':'first','High':'max','Low':'min','Close':'last'}).dropna()
     
     df_d = calc_v4_indicators(df_daily.copy())
     df_w = calc_v4_indicators(df_weekly.copy())
-    df_m = calc_v4_indicators(df_monthly.copy())
     
-    if df_d is None or df_w is None or df_m is None:
+    if df_d is None or df_w is None:
         return False, "指标生成失败", None
 
     curr_d = df_d.iloc[-1]
     prev_d = df_d.iloc[-2]
-    
     curr_w = df_w.iloc[-1] if len(df_w) > 0 else None
-    prev_w = df_w.iloc[-2] if len(df_w) >= 2 else None
-    
-    curr_m = df_m.iloc[-1] if len(df_m) > 0 else None
-    prev_m = df_m.iloc[-2] if len(df_m) >= 2 else None
-    # ==========================================
-    # 自修：V4 T模块检查
-    # ==========================================
-    # 自修：第一步：月线级别审核 (MACD、BOLL、GMMA，三者满足其二则通过)
-    if curr_m is not None:
-        m_pass_count = 0
-    # 1：MACD 条件 (宏观重力压制)
-        m_macd_pass = True
-        if not pd.isna(curr_m['MACD_DIF']):
-            if curr_m['MACD_DIF'] < curr_m['MACD_DEA'] and curr_m['MACD_DIF'] < 0:
-                m_macd_pass = False
-        if m_macd_pass: m_pass_count += 1
-    # 2. BOLL 条件 (底座与中轨趋势)
-        m_boll_pass = True
-        if not pd.isna(curr_m['BOLL_MID']) and curr_m['Close'] < curr_m['BOLL_MID']:
-            m_boll_pass = False
-        if prev_m is not None and not pd.isna(curr_m['BOLL_MID']) and not pd.isna(prev_m['BOLL_MID']):
-            if curr_m['BOLL_MID'] <= prev_m['BOLL_MID']:
-                m_boll_pass = False
-        if m_boll_pass: m_pass_count += 1
-    # 3. GMMA 条件 (长期组斜率)
-        m_gmma_pass = True
-        if prev_m is not None and not pd.isna(curr_m['EMA_60']):
-            if curr_m['EMA_60'] < prev_m['EMA_60']:
-                m_gmma_pass = False
-        if m_gmma_pass: m_pass_count += 1
-            
-        # 综合判定
-        if m_pass_count < 2:
-            return False, f"月线级别审核未通过 (仅符合 {m_pass_count}/3 项)", None
 
-   # 自修：第二步：周线级别审核 (仅 BOLL、GMMA 具备否决权)
+    # ==========================================
+    # 【V4.1 修复】大周期过滤
+    # ==========================================
+    if 'MA200' not in curr_d.index or pd.isna(curr_d['MA200']) or pd.isna(prev_d['MA200']):
+        return False, "MA200 数据缺失", None
+
+    if curr_d['Close'] <= curr_d['MA200']:
+        return False, "价格在 MA200 之下 (大周期空头)", None
+
+    if curr_d['MA200'] <= prev_d['MA200']:
+        return False, "MA200 走平或向下 (宏观趋势未走强)", None
+
+    # ==========================================
+    # 周线级别审核
+    # ==========================================
     if curr_w is not None:
-        # 补充 1.3：周线 GMMA 结构测试 (短期组必须在长期组内部或上方)
-        w_short_min = min([curr_w[f'EMA_{p}'] for p in SHORT_GMMA])
-        w_long_min = min([curr_w[f'EMA_{p}'] for p in LONG_GMMA])
+        w_short_min = min([curr_w[f'EMA_{p}'] for p in SHORT_GMMA if f'EMA_{p}' in curr_w.index])
+        w_long_min = min([curr_w[f'EMA_{p}'] for p in LONG_GMMA if f'EMA_{p}' in curr_w.index])
         if w_short_min < w_long_min:
-            return False, "周线GMMA短期组跌穿长期组底线", None
+            return False, "周线GMMA短期组跌穿长期组", None
 
-        # 【新增】1.3.1 周线 BOLL 中轨必须保持向上（Trend Lock）
         if len(df_w) >= 2:
             prev_w = df_w.iloc[-2]
             if not pd.isna(curr_w['BOLL_MID']) and not pd.isna(prev_w['BOLL_MID']) and \
                curr_w['BOLL_MID'] <= prev_w['BOLL_MID']:
-                return False, "周线BOLL中轨向下或走平 (中期趋势衰竭)", None
-    
-   # 自修：第三步：日线级别审核 (BOLL、GMMA 及原有风控项)
+                return False, "周线BOLL中轨向下或走平", None
 
-    # 1. 日线 GMMA 筹码结构
+    # ==========================================
+    # 日线级别审核
+    # ==========================================
     if curr_d['EMA_60'] <= prev_d['EMA_60']:
-        return False, "日线长期GMMA组向下 (不向上)", None
+        return False, "日线长期GMMA组向下", None
 
     d_short_min = min([curr_d[f'EMA_{p}'] for p in SHORT_GMMA])
-    d_long_min = min([curr_d[f'EMA_{p}'] for p in LONG_GMMA])   # 长期组最后一根线 = EMA_60
+    d_long_min = min([curr_d[f'EMA_{p}'] for p in LONG_GMMA])
     if d_short_min < d_long_min:
-        return False, "短期均线跌穿长期组最后一根线", None
+        return False, "短期均线跌穿长期组", None
 
-    # 2：BOLL 生命线与趋势锁 (Trend Lock)
     if curr_d['Close'] <= curr_d['BOLL_MID']:
         return False, "跌破日线中轨", None
     if curr_d['BOLL_MID'] <= prev_d['BOLL_MID']:
-        return False, "中轨向下或走平 (假突破过滤)", None
-    
-    # 3. 原有防追高防御保留
-    if not pd.isna(curr_d['ATR']):
-        deviation_ratio = (curr_d['Close'] - curr_d['BOLL_MID']) / curr_d['ATR']
-        if deviation_ratio > 1.5:
-            return False, f"乖离率过大 ({deviation_ratio:.2f} ATR)", None
+        return False, "中轨向下或走平", None
 
-    # 4. 原有挤压防御保留
-    if 'BOLL_WIDTH' in curr_d:
-        squeeze_ratio = curr_d['BOLL_WIDTH']
-        if squeeze_ratio > 0.30: 
-            return False, "波动率过度发散", None
+    if pd.isna(curr_d['ATR']) or pd.isna(curr_d.get('BOLL_WIDTH')):
+        return False, "ATR或布林带数据缺失", None
 
+    deviation_ratio = (curr_d['Close'] - curr_d['BOLL_MID']) / curr_d['ATR']
+    squeeze_ratio = curr_d['BOLL_WIDTH']
 
-   # 自修 第四步：计算连续共振天数（已改为真正统计「整个函数连续触发天数」）
+    # ==========================================
+    # 【V4.2 核心】分市场ML阈值过滤
+    # ==========================================
+    # 乖离率上限
+    if deviation_ratio > thresholds['deviation_max']:
+        return False, f"乖离率超标 ({deviation_ratio:.2f} > {thresholds['deviation_max']})", None
+
+    # 乖离率下限（港股、A股需要右侧确认）
+    if thresholds['deviation_min'] is not None and deviation_ratio < thresholds['deviation_min']:
+        return False, f"乖离率不足 ({deviation_ratio:.2f} < {thresholds['deviation_min']})", None
+
+    # 挤压率上限
+    if squeeze_ratio > thresholds['squeeze_max']:
+        return False, f"挤压率超标 ({squeeze_ratio*100:.1f}% > {thresholds['squeeze_max']*100:.1f}%)", None
+
+    # ==========================================
+    # 连续共振天数 (仅用于展示)
+    # ==========================================
     consecutive_days = 0
-    # 向前追溯最多30天
     for i in range(1, 31):
         if len(df_d) <= i: break
         lookback_curr = df_d.iloc[-i]
         lookback_prev = df_d.iloc[-(i+1)] if len(df_d) > (i+1) else None
-        
-        # === 对每一过去一天，完整检查日线级别所有严格条件 ===
-        # ① 长期GMMA必须向上
-        if lookback_prev is not None and lookback_curr['EMA_60'] <= lookback_prev['EMA_60']:
-            break
-        
-        # ② 短期GMMA允许进入长期组，但不能跌穿最后一根线
+
+        if lookback_prev is not None and lookback_curr['EMA_60'] <= lookback_prev['EMA_60']: break
         lb_short_min = min([lookback_curr[f'EMA_{p}'] for p in SHORT_GMMA])
         lb_long_min = min([lookback_curr[f'EMA_{p}'] for p in LONG_GMMA])
-        if lb_short_min < lb_long_min:
-            break
-        
-        # ③ BOLL 生命线 + Trend Lock
-        if lookback_curr['Close'] <= lookback_curr['BOLL_MID']:
-            break
-        if lookback_prev is not None and lookback_curr['BOLL_MID'] <= lookback_prev['BOLL_MID']:
-            break
-        
-        # ④ 乖离率防追高
+        if lb_short_min < lb_long_min: break
+        if lookback_curr['Close'] <= lookback_curr['BOLL_MID']: break
+        if lookback_prev is not None and lookback_curr['BOLL_MID'] <= lookback_prev['BOLL_MID']: break
+
         if not pd.isna(lookback_curr['ATR']):
             lb_dev = (lookback_curr['Close'] - lookback_curr['BOLL_MID']) / lookback_curr['ATR']
-            if lb_dev > 1.5:
-                break
-        
-        # ⑤ 挤压锁
-        lb_squeeze = lookback_curr['BOLL_WIDTH']
-        if lb_squeeze > 0.30:
+            if lb_dev > thresholds['deviation_max']: break
+        else:
             break
-        
-        # 全部通过 → 计数 +1，继续往前看
+
+        lb_squeeze = lookback_curr['BOLL_WIDTH']
+        if lb_squeeze > thresholds['squeeze_max']: break
         consecutive_days += 1
 
-    signal_strength = "S级 (完美共振)" if squeeze_ratio < 0.12 else "A级 (常态推升)"
-    streak_tag = f" [🔥连续触发 {consecutive_days} 天]" if consecutive_days > 1 else " [✨首日触发]"
+    signal_strength = f"SS级 [{market}]"
+    streak_tag = f" [连续触发 {consecutive_days} 天]" if consecutive_days > 1 else " [✨首日触发]"
     final_reason = signal_strength + streak_tag
 
     dashboard_data = {
         'Close': round(float(curr_d['Close']), 2),
-        'ATR': round(float(curr_d['ATR']), 2) if not pd.isna(curr_d['ATR']) else 0,
+        'ATR': round(float(curr_d['ATR']), 2),
         'Squeeze': f"{float(squeeze_ratio)*100:.1f}%",
         'Deviation': f"{float(deviation_ratio):.1f} ATR",
-        'Dynamic_Stop': round(float(curr_d['Close'] - 2.5 * curr_d['ATR']), 2) if not pd.isna(curr_d['ATR']) else 0,
+        'Dynamic_Stop': round(float(curr_d['Close'] - 2.5 * curr_d['ATR']), 2),
         'Streak': consecutive_days
     }
     
@@ -485,9 +451,6 @@ def push_to_wechat(results):
     except Exception as e:
         print(f"❌ 【微信群发失败】: {e}")
 
-# =====================================================================
-# === [新增核心功能] 战役效能追踪引擎 (Campaign Tracker) ===
-# =====================================================================
 def fetch_tracker_from_cloud():
     """从 KV 数据库下载现有的 TRACKER_ALL 账本"""
     try:
@@ -508,13 +471,11 @@ def update_tracker_logic(daily_results, all_history_data):
         
     today_str = datetime.now().strftime("%Y-%m-%d")
 
-    # 1. 新兵入库：将今日雷达新出的标的加入追踪
     for item in daily_results:
         full_ticker = item['代码']
         ticker_code = full_ticker.split(' ')[0]
         campaign_id = f"{ticker_code}-{today_str}"
         
-        # 防重复检查
         if not any(c.get('campaign_id') == campaign_id for c in tracker_db):
             p_in = float(item['现价'])
             stop_1r = float(item['1R防线'])
@@ -534,15 +495,13 @@ def update_tracker_logic(daily_results, all_history_data):
                 "r_multiple": "+0.0R"
             })
 
-    # 2. 老兵点名：更新所有存量战役
     for campaign in tracker_db:
         if campaign.get('status') == "STOPPED": 
             continue 
         
         t_full = campaign['ticker']
-        t_pure = t_full.split(' ')[0] # 提取纯代码用于获取股票数据
+        t_pure = t_full.split(' ')[0]
         try:
-            # 兼容单个或多个 Ticker 的 yfinance 结构
             df = all_history_data[t_pure].copy() if len(TICKERS) > 1 else all_history_data.copy()
             df.dropna(subset=['Close'], inplace=True)
             if df.empty: continue
@@ -550,33 +509,27 @@ def update_tracker_logic(daily_results, all_history_data):
             curr_p = float(df['Close'].iloc[-1])
             p_in = float(campaign['p_in'])
             
-            # 追踪最高价 HHV 更新
             if curr_p > campaign.get('hhv', 0): 
                 campaign['hhv'] = curr_p
             
-            # 计算 14D ATR 动态防线
             tr = pd.concat([df['High']-df['Low'], (df['High']-df['Close'].shift()).abs(), (df['Low']-df['Close'].shift()).abs()], axis=1).max(axis=1)
             atr = float(tr.rolling(14).mean().iloc[-1])
             
             new_stop = round(campaign['hhv'] - 2.5 * atr, 2)
-            # 棘轮效应：防线只上移
             if new_stop > campaign.get('stop_dyn', 0): 
                 campaign['stop_dyn'] = new_stop
             
-            # 执行物理裁决状态更新
             if curr_p <= campaign['stop_dyn']:
                 campaign['status'] = "STOPPED"
                 campaign['p_now'] = campaign['stop_dyn']
             else:
                 campaign['p_now'] = round(curr_p, 2)
-                # 2R 利润保护接管
                 risk_1r = p_in - float(campaign['stop_initial'])
                 if risk_1r > 0 and (curr_p - p_in) >= 2 * risk_1r:
                     campaign['status'] = "LOCKED"
                     if campaign['stop_dyn'] < p_in: 
-                        campaign['stop_dyn'] = p_in # 上提盈亏线
+                        campaign['stop_dyn'] = p_in
             
-            # 计算收益率
             start_d = datetime.strptime(campaign['start_date'], "%Y-%m-%d").date()
             days = max((date.today() - start_d).days, 1)
             
@@ -594,7 +547,6 @@ def update_tracker_logic(daily_results, all_history_data):
                 campaign['r_multiple'] = f"{'+' if r_val>0 else ''}{r_val:.1f}R"
                 
         except Exception as e: 
-            print(f"Error updating {t_full}: {e}")
             continue
         
     return tracker_db
@@ -629,7 +581,7 @@ def run_v4_daily_scanner():
             df_ticker.dropna(subset=['Close'], inplace=True)
             if df_ticker.empty: continue
                 
-            is_valid, final_reason, metrics = check_v4_resonance_strict(df_ticker)
+            is_valid, final_reason, metrics = check_v4_resonance_strict(df_ticker, ticker)
             if is_valid:
                 stock_name = NAME_MAP.get(ticker, "")
                 display_code = f"{ticker} {stock_name}".strip()
@@ -645,10 +597,8 @@ def run_v4_daily_scanner():
                     '1R防线': float(metrics['Dynamic_Stop'])
                 })
         except Exception as e:
-            print(f"Error parsing {ticker}: {e}")
             continue
 
-    # ================= 核心：战役效能更新与双轨推流 =================
     updated_tracker_data = update_tracker_logic(results, data)
 
     if results:
@@ -664,10 +614,8 @@ def run_v4_daily_scanner():
         print("📭 系统休眠：今日无可投新标的，但已自动更新存量追踪防线。")
         push_to_wechat([])
 
-    # ================= 核心：生成宏观重力矩阵 =================
     matrix_results = generate_macro_matrix()
 
-    # 无论有无新标的，强制推送同步三轨数据
     push_v4_data_to_website(results, updated_tracker_data, matrix_results)
 
 if __name__ == "__main__":
