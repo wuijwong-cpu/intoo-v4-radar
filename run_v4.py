@@ -23,7 +23,7 @@ SECRET_TOKEN = os.environ.get("SECRET_TOKEN")
 # =====================================================================
 V4_US_UNIVERSE = {
     'Type_A': ['XOM','CVX','COST','JNJ','PG','KO','PEP','WMT','MCD','ABBV','MRK','HD','UNH','V','MA','JPM','BAC','BRK-B','MS','NEE','SO','DUK','LMT','RTX','GD','PM','MO','VZ','T','PFE','AMGN','GILD','UPS','EMR','WM','APD'],
-    'Type_B': ['NVDA','MSFT','AMD','META','QCOM','GOOGL','AMZN','CRWD','PLTR','NOW','SNOW','DDOG','AAPL','AVGO','TSM','ASML','PANW','LLY','NFLX','CRM','ANET','ARM','MRVL','MU','KLAC','LRCX','AMAT','CDNS','SNPS','INTU','WDAY','TEAM','FTNT','ZS','MDB','APP','UBER','ISRG','VRTX','REGN','CELH','TRMD','VRT','SMCI','TTD'],
+    'Type_B': ['NVDA','MSFT','AMD','META','QCOM','GOOGL','AMZN','CRWD','PLTR','NOW','SNOW','DDOG','AAPL','AVGO','TSM','ASML','PANW','LLY','NFLX','CRM','ANET','ARM','MRVL','MU','KLAC','LRCX','AMAT','CDNS','SNPS','INTU','WDAY','TEAM','FTNT','ZS','MDB','APP','UBER','ISRG','VRTX','REGN','CELH','TRMD','VRT','SMCI','ROKU','TTD'],
     'Type_C': ['TSLA','CAT','FCX','CIEN','C','SLB','HAL','NUE','SCCO','URI','PWR','BA','GM','DOW','LYB'],
     'Type_D': ['COIN','MSTR','HOOD','CVNA','RDDT','ASTS','LUNR','RBLX']
 }
@@ -71,7 +71,7 @@ NAME_MAP = {
     'TEAM': 'Atlassian', 'FTNT': '飞塔信息', 'ZS': 'Zscaler', 'MDB': 'MongoDB', 
     'APP': 'AppLovin', 'UBER': '优步', 'ISRG': '直觉外科', 'VRTX': '福泰制药', 
     'REGN': '再生元', 'CELH': '燃力士', 'TRMD': 'TORM', 'VRT': '维谛技术', 
-    'SMCI': '超微电脑', 'TTD': 'The Trade Desk',
+    'SMCI': '超微电脑', 'TTD': 'The Trade Desk','ROKU': 'ROKU',
     'TSLA': '特斯拉', 'CAT': '卡特彼勒', 'FCX': '自由港', 'CIEN': 'Ciena', 'C': '花旗集团', 
     'SLB': '斯伦贝谢', 'HAL': '哈里伯顿', 'NUE': '纽柯钢铁', 'SCCO': '南方铜业', 
     'URI': '联合租赁', 'PWR': '广达服务', 'BA': '波音', 'GM': '通用汽车', 'DOW': '陶氏化学', 
