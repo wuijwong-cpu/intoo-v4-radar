@@ -199,6 +199,14 @@ TYPE_RULES = {
     'Type_C': {'enabled': True, 'deviation_max': 0.75, 'weight': 0.8},
     'Type_D': {'enabled': True, 'deviation_max': 0.75, 'weight': 0.3},
 }
+
+# 【月线闸门·分市场】A/B 实测（2013-2026，原始 411 只池，账户级 + 逐笔）
+#   US 开 -> 最大回撤 -18.3% -> -14.6%（收益持平，夏普持平）        => 开
+#   HK 开 -> 样本外年化 61.2% -> 63.9%，逐笔 R 0.35 -> 0.36         => 开
+#   JP 关 -> 开后最大回撤反而恶化 4.2pp（-10.5% -> -14.7%）        => 关
+#   CN 关 -> 开后逐笔 R 腰斩 1.29 -> 0.80、样本内年化 28.9% -> 14.0% => 关
+# 月线规则：三选二（MACD 非"零轴下死叉" / 收盘>月线中轨且中轨上行 / 月线 EMA60 上行）
+USE_MONTHLY_BY_MARKET = {'US': True, 'HK': True, 'JP': False, 'CN': False}
 # 【行业层·可选】把 sector_map.csv（列：Ticker,GICS_Sector）放在脚本同目录即自动生效；
 #   缺文件则只启用类型层。回测：信息技术 +0.57R 最强；房地产 +0.04R（平均收益为负）最差。
 SECTOR_EXCLUDE = {'房地产'}
@@ -375,6 +383,26 @@ def check_v4_resonance_strict(df_daily, ticker):
             if not pd.isna(curr_w['BOLL_MID']) and not pd.isna(prev_w['BOLL_MID']) and \
                curr_w['BOLL_MID'] <= prev_w['BOLL_MID']:
                 return False, "周线BOLL中轨向下或走平", None
+
+    # ---------- 月线闸门（分市场，见文件头 USE_MONTHLY_BY_MARKET） ----------
+    if USE_MONTHLY_BY_MARKET.get(market, False):
+        df_m = df_daily.resample('ME').agg(
+            {'Open': 'first', 'High': 'max', 'Low': 'min', 'Close': 'last'}).dropna()
+        if len(df_m) < 60:
+            print(f"  [月线] {ticker} 月线样本仅 {len(df_m)} 根(<60)，本次跳过月线审核")
+        else:
+            mc = df_m['Close']
+            _dif = mc.ewm(span=12, adjust=False).mean() - mc.ewm(span=26, adjust=False).mean()
+            _dea = _dif.ewm(span=9, adjust=False).mean()
+            _mid = mc.rolling(20).mean()
+            _e60 = mc.ewm(span=60, adjust=False).mean()
+            _s1 = not (_dif.iloc[-1] < _dea.iloc[-1] and _dif.iloc[-1] < 0)
+            _s2 = bool(mc.iloc[-1] > _mid.iloc[-1] and _mid.iloc[-1] > _mid.iloc[-2]) \
+                if not pd.isna(_mid.iloc[-2]) else False
+            _s3 = bool(_e60.iloc[-1] > _e60.iloc[-2]) if not pd.isna(_e60.iloc[-2]) else False
+            _n = int(_s1) + int(_s2) + int(_s3)
+            if _n < 2:
+                return False, f"月线审核未通过 ({_n}/3)", None
 
     # ==========================================
     # 日线级别审核
@@ -629,7 +657,7 @@ def run_v4_daily_scanner():
     global RUN_DATA_DATE
     _lim = int(os.environ.get("V4_LIMIT", "0"))
     tk_list = TICKERS[:_lim] if _lim else TICKERS
-    data = yf.download(tk_list, period='3y', group_by='ticker', progress=False,
+    data = yf.download(tk_list, period='5y', group_by='ticker', progress=False,
                        auto_adjust=True)
     RUN_DATA_DATE = pd.Timestamp(data.index.max()).strftime("%Y%m%d")
     
