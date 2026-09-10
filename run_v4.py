@@ -71,7 +71,7 @@ NAME_MAP = {
     'TEAM': 'Atlassian', 'FTNT': '飞塔信息', 'ZS': 'Zscaler', 'MDB': 'MongoDB', 
     'APP': 'AppLovin', 'UBER': '优步', 'ISRG': '直觉外科', 'VRTX': '福泰制药', 
     'REGN': '再生元', 'CELH': '燃力士', 'TRMD': 'TORM', 'VRT': '维谛技术', 
-    'SMCI': '超微电脑', 'TTD': 'The Trade Desk','ROKU': 'ROKU',
+    'SMCI': '超微电脑', 'TTD': 'The Trade Desk', 'ROKU': 'ROKU',
     'TSLA': '特斯拉', 'CAT': '卡特彼勒', 'FCX': '自由港', 'CIEN': 'Ciena', 'C': '花旗集团', 
     'SLB': '斯伦贝谢', 'HAL': '哈里伯顿', 'NUE': '纽柯钢铁', 'SCCO': '南方铜业', 
     'URI': '联合租赁', 'PWR': '广达服务', 'BA': '波音', 'GM': '通用汽车', 'DOW': '陶氏化学', 
@@ -170,11 +170,17 @@ for market_name, universe in GLOBAL_POOLS.items():
 # =====================================================================
 # 【V4.2 新增】分市场专属ML阈值参数表
 # =====================================================================
+# 【阈值标定血缘卡】标定区间 2013-01-01~2019-12-31；验证区间(样本外) 2020-01-01~2026-09
+#   目标函数：趋势过滤后「20 日前瞻对数收益」相对同市场趋势日基线的超额（pp）
+#   样本池：US 132 / HK 66 / JP 101 / CN 102 只（行业分散·流动性靠前）
+#   样本外结论：JP +0.244pp(3439次) / CN +0.871pp(166次,胜率66%) 成立；
+#              US −0.251pp、HK −0.945pp -> 该两市场 squeeze 关(None)，仅保留趋势+乖离
+#   注意：squeeze 口径 = BOLL_WIDTH = 4σ/MID（如需 1σ 口径请除以 4）
 ML_THRESHOLDS = {
-    'US': {'squeeze_max': 0.0225, 'deviation_max': 0.44, 'deviation_min': None},
-    'HK': {'squeeze_max': 0.0585, 'deviation_max': 0.44, 'deviation_min': 0.23},
-    'CN': {'squeeze_max': 0.0535, 'deviation_max': 1.50, 'deviation_min': 0.75},
-    'JP': {'squeeze_max': 0.0775, 'deviation_max': 0.44, 'deviation_min': None}
+    'US': {'squeeze_max': None, 'deviation_max': 0.75, 'deviation_min': None},
+    'HK': {'squeeze_max': None, 'deviation_max': 0.75, 'deviation_min': 0.50},
+    'CN': {'squeeze_max': 0.04, 'deviation_max': 0.75, 'deviation_min': None},
+    'JP': {'squeeze_max': None, 'deviation_max': 0.75, 'deviation_min': 0.50}
 }
 
 # 参数设定
@@ -362,7 +368,7 @@ def check_v4_resonance_strict(df_daily, ticker):
         return False, f"乖离率不足 ({deviation_ratio:.2f} < {thresholds['deviation_min']})", None
 
     # 挤压率上限
-    if squeeze_ratio > thresholds['squeeze_max']:
+    if thresholds['squeeze_max'] is not None and squeeze_ratio > thresholds['squeeze_max']:
         return False, f"挤压率超标 ({squeeze_ratio*100:.1f}% > {thresholds['squeeze_max']*100:.1f}%)", None
 
     # ==========================================
@@ -388,7 +394,7 @@ def check_v4_resonance_strict(df_daily, ticker):
             break
 
         lb_squeeze = lookback_curr['BOLL_WIDTH']
-        if lb_squeeze > thresholds['squeeze_max']: break
+        if thresholds['squeeze_max'] is not None and lb_squeeze > thresholds['squeeze_max']: break
         consecutive_days += 1
 
     signal_strength = f"SS级 [{market}]"
@@ -409,7 +415,7 @@ def check_v4_resonance_strict(df_daily, ticker):
 def export_to_excel(results):
     """将扫描结果自动化导出为 Excel 猎物池"""
     df = pd.DataFrame(results)
-    today_str = datetime.now().strftime("%Y%m%d")
+    today_str = globals().get("RUN_DATA_DATE") or datetime.now().strftime("%Y%m%d")
     filename = f"V4_Global_全球猎物池_{today_str}.xlsx"
     
     columns_order = ['市场', '代码', '信号', '现价', 'ATR', '挤压率', '乖离率', '1R防线']
@@ -446,7 +452,8 @@ def push_to_wechat(results):
     url = "http://www.pushplus.plus/send"
     payload = {"token": PUSHPLUS_TOKEN, "title": title, "content": content, "template": "markdown", "topic": PUSHPLUS_TOPIC}
     try:
-        response = requests.post(url, json=payload)
+        response = requests.post(url, json=payload, timeout=15)
+        response.raise_for_status()
         print(f"✅ 【微信群发】战报已成功广播至群组 [{PUSHPLUS_TOPIC}]")
     except Exception as e:
         print(f"❌ 【微信群发失败】: {e}")
@@ -454,18 +461,21 @@ def push_to_wechat(results):
 def fetch_tracker_from_cloud():
     """从 KV 数据库下载现有的 TRACKER_ALL 账本"""
     try:
-        r = requests.get(f"{API_URL_BASE}/radar?type=tracker")
+        r = requests.get(f"{API_URL_BASE}/radar?type=tracker", timeout=15)
         if r.status_code == 200:
             data = r.json()
             if isinstance(data, dict):
                 return data.get("tracker_data", [])
     except Exception as e:
-        print(f"⚠️ 拉取云端追踪账本失败: {e}")
-    return []
+        print(f"❌ 拉取云端追踪账本失败: {e}")
+    return None
 
 def update_tracker_logic(daily_results, all_history_data):
     """战役追踪逻辑：合并新标的，更新存量战役现价、收益与防线状态"""
     tracker_db = fetch_tracker_from_cloud()
+    if tracker_db is None:
+        print("❌ 云端账本不可得 -> 本次跳过云端同步，避免覆盖历史账本")
+        return None
     if not isinstance(tracker_db, list):
         tracker_db = []
         
@@ -562,7 +572,8 @@ def push_v4_data_to_website(radar_res, tracker_res, matrix_res):
     }
     headers = {"Content-Type": "application/json", "Authorization": f"Bearer {SECRET_TOKEN}"}
     try:
-        response = requests.post(f"{API_URL_BASE}/update_radar", json=payload, headers=headers)
+        response = requests.post(f"{API_URL_BASE}/update_radar", json=payload, headers=headers, timeout=15)
+        response.raise_for_status()
         print(f"✅ 【云端同步】三轨数据已发射！Cloudflare 返回状态码: {response.status_code}")
     except Exception as e:
         print(f"❌ 【云端同步失败】: {e}")
@@ -572,10 +583,15 @@ def push_v4_data_to_website(radar_res, tracker_res, matrix_res):
 # =====================================================================
 def run_v4_daily_scanner():
     print(f"INTOO V4 T模块：全球四大市场 (US/HK/JP/CN) 全景扫描中...\n")
-    data = yf.download(TICKERS, period='3y', group_by='ticker', progress=False)
+    global RUN_DATA_DATE
+    _lim = int(os.environ.get("V4_LIMIT", "0"))
+    tk_list = TICKERS[:_lim] if _lim else TICKERS
+    data = yf.download(tk_list, period='3y', group_by='ticker', progress=False,
+                       auto_adjust=True)
+    RUN_DATA_DATE = pd.Timestamp(data.index.max()).strftime("%Y%m%d")
     
-    results = []
-    for ticker in TICKERS:
+    results, failed = [], []
+    for ticker in tk_list:
         try:
             df_ticker = data[ticker].copy() if len(TICKERS) > 1 else data.copy()
             df_ticker.dropna(subset=['Close'], inplace=True)
@@ -597,7 +613,10 @@ def run_v4_daily_scanner():
                     '1R防线': float(metrics['Dynamic_Stop'])
                 })
         except Exception as e:
+            failed.append(f"{ticker}:{type(e).__name__}")
             continue
+    print(f"[体检] 扫描 {len(tk_list)} 只 | 无数据/失败 {len(failed)} 只"
+          + (f" -> {failed[:6]}" if failed else ""))
 
     updated_tracker_data = update_tracker_logic(results, data)
 
@@ -608,15 +627,20 @@ def run_v4_daily_scanner():
         print(df_res[['市场', '代码', '信号', '现价', '1R防线']].to_string(index=False))
         print("=============================================================\n")
         
-        export_to_excel(results)
-        push_to_wechat(results)
+        if os.environ.get("V4_DRY_RUN") != "1":
+            export_to_excel(results)
+            push_to_wechat(results)
     else:
         print("📭 系统休眠：今日无可投新标的，但已自动更新存量追踪防线。")
-        push_to_wechat([])
+        if os.environ.get("V4_DRY_RUN") != "1":
+            push_to_wechat([])
 
     matrix_results = generate_macro_matrix()
 
-    push_v4_data_to_website(results, updated_tracker_data, matrix_results)
+    if updated_tracker_data is None or os.environ.get("V4_DRY_RUN") == "1":
+        print("⏸️ 已跳过云端同步（DRY_RUN 或账本不可得）")
+    else:
+        push_v4_data_to_website(results, updated_tracker_data, matrix_results)
 
 if __name__ == "__main__":
     run_v4_daily_scanner()
