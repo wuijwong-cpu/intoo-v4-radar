@@ -15,7 +15,7 @@ warnings.filterwarnings('ignore')
 PUSHPLUS_TOKEN = os.environ.get("PUSHPLUS_TOKEN")
 PUSHPLUS_TOPIC = "INTOO_V4"
 
-API_URL_BASE = "https://ito-core-proxy.wuijwong.workers.dev/api"
+API_URL_BASE = "https://api.intootech.com/api"
 SECRET_TOKEN = os.environ.get("SECRET_TOKEN")
 
 # =====================================================================
